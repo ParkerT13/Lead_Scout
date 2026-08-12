@@ -130,8 +130,8 @@ _DEFAULT_SETTINGS = {
     "output_dir":       str(get_output_dir()),
     "search_delay":     2,
     "default_format":   "HubSpot",
-    "title_include":    "",
-    "title_exclude":    "",
+    "title_include":    "engineer, geoscientist, geophysicist, geologist, petrophysicist, vp, director, manager, lead",
+    "title_exclude":    "intern, student, professor",
 }
 
 # Seniority tiers for contact priority scoring
@@ -216,7 +216,9 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         for k, v in _DEFAULT_SETTINGS.items():
-            self._settings.setdefault(k, v)
+            # Use default if key is missing OR if it's a filter key that was saved blank
+            if k not in self._settings or (k in ("title_include", "title_exclude") and self._settings[k] == ""):
+                self._settings[k] = v
 
     def _save_settings(self):
         try:
