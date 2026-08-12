@@ -155,8 +155,21 @@ _GENERIC_LEVEL   = re.compile(
     re.IGNORECASE,
 )
 _CREDENTIALS     = re.compile(
-    r"(?<!\w),?\s*(PhD|Ph\.D\.?|MBA|P\.?E\.?|MS|M\.S\.?|BS|B\.S\.?|PG|CPG|"
-    r"CEng|CGeol|RPG|AAPG|SEG|SPE|CPA|JD)\.?(?!\w)",
+    r",?\s*\b("
+    # Academic degrees
+    r"Ph\.?D\.?|M\.?D\.?|D\.?O\.?|D\.?V\.?M\.?|J\.?D\.?|L\.?L\.?M\.?|"
+    r"M\.?B\.?A\.?|M\.?S\.?|M\.?Sc\.?|B\.?S\.?|B\.?Sc\.?|B\.?A\.?|"
+    # Professional certifications
+    r"P\.?M\.?P\.?|P\.?E\.?|E\.?I\.?T\.?|"
+    r"C\.?P\.?A\.?|C\.?F\.?A\.?|C\.?F\.?P\.?|C\.?M\.?A\.?|"
+    r"C\.?I\.?S\.?S\.?P\.?|C\.?I\.?S\.?M\.?|"
+    # Medical / nursing
+    r"R\.?N\.?|N\.?P\.?|A\.?P\.?R\.?N\.?|"
+    # O&G specific
+    r"PG|CPG|CEng|CGeol|RPG|AAPG|SEG|SPE|SPEE|"
+    # Generational suffixes
+    r"Jr\.?|Sr\.?|II|III|IV"
+    r")\b\.?",
     re.IGNORECASE,
 )
 _PREFIXES = re.compile(r"^(Dr|Mr|Mrs|Ms|Prof)\.?\s+", re.IGNORECASE)
@@ -168,6 +181,8 @@ def parse_result(title: str, url: str, body: str) -> dict:
     parts = name.strip().split()
     first_name = parts[0] if parts else ""
     last_name  = parts[-1] if len(parts) > 1 else ""
+    # name field is always "First Last" — no middle names, no credentials
+    name = f"{first_name} {last_name}".strip() if first_name else name
     return {
         "name":         name,
         "first_name":   first_name,
@@ -275,8 +290,18 @@ def _extract_name(title: str) -> str:
     if not parts:
         return ""
     name = parts[0].strip()
-    name = _CREDENTIALS.sub("", name).strip().rstrip(",").strip()
+    # Drop everything after first comma: "John Smith, PhD, PE" -> "John Smith"
+    name = name.split(",")[0].strip()
+    # Strip honorific prefixes (Dr., Mr., etc.)
     name = _PREFIXES.sub("", name).strip()
+    # Strip inline credentials ("John Smith PhD" -> "John Smith")
+    name = _CREDENTIALS.sub("", name).strip()
+    # Collapse to first + last word only — drop middle names and initials
+    words = name.split()
+    if len(words) > 2:
+        name = f"{words[0]} {words[-1]}"
+    elif words:
+        name = " ".join(words)
     return name
 
 
