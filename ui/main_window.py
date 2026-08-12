@@ -130,8 +130,83 @@ _DEFAULT_SETTINGS = {
     "output_dir":       str(get_output_dir()),
     "search_delay":     2,
     "default_format":   "HubSpot",
-    "title_include":    "engineer, geoscientist, geophysicist, geologist, petrophysicist, vp, director, manager, lead",
-    "title_exclude":    "intern, student, professor",
+    "title_filter_enabled": {},   # keyword -> bool (True = checked)
+    "title_filter_custom":  "",   # comma-separated extra keywords
+    "title_exclude":        "intern, student, professor",
+}
+
+# Comprehensive O&G title keyword groups — each keyword does substring matching
+_TITLE_FILTER_GROUPS = {
+    "Geoscience": [
+        "geologist",
+        "geophysicist",
+        "geoscientist",
+        "petrophysicist",
+        "seismic",
+        "geosteering",
+        "stratigraphic",
+        "structural geology",
+        "formation evaluation",
+        "rock physics",
+        "geomodel",
+        "earth scientist",
+        "basin analyst",
+        "microseismic",
+        "interpretation",
+        "subsurface analyst",
+        "g&g",
+    ],
+    "Engineering": [
+        "petroleum engineer",
+        "reservoir engineer",
+        "completions engineer",
+        "completion engineer",
+        "drilling engineer",
+        "production engineer",
+        "well engineer",
+        "subsurface engineer",
+        "facilities engineer",
+        "stimulation engineer",
+        "frac engineer",
+        "waterflood engineer",
+        "artificial lift engineer",
+        "surveillance engineer",
+        "simulation engineer",
+        "operations engineer",
+        "wellbore engineer",
+        "field development",
+        "engineering manager",
+        "subsurface manager",
+        "asset manager",
+        "asset team lead",
+    ],
+    "Leadership & Technical": [
+        "vp geoscience",
+        "vp exploration",
+        "vp engineering",
+        "vp operations",
+        "vp subsurface",
+        "vp reservoir",
+        "vice president",
+        "chief geoscientist",
+        "chief engineer",
+        "chief geophysicist",
+        "director of geoscience",
+        "director of engineering",
+        "director of exploration",
+        "exploration director",
+        "technical director",
+        "head of geoscience",
+        "head of engineering",
+        "principal geoscientist",
+        "principal geophysicist",
+        "principal engineer",
+        "staff geoscientist",
+        "staff geophysicist",
+        "staff engineer",
+        "technical manager",
+        "subsurface lead",
+    ],
 }
 
 # Seniority tiers for contact priority scoring
@@ -216,9 +291,10 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         for k, v in _DEFAULT_SETTINGS.items():
-            # Use default if key is missing OR if it's a filter key that was saved blank
-            if k not in self._settings or (k in ("title_include", "title_exclude") and self._settings[k] == ""):
-                self._settings[k] = v
+            self._settings.setdefault(k, v)
+        # Migrate old title_include plain text → new structure (one-time)
+        if "title_include" in self._settings:
+            del self._settings["title_include"]
 
     def _save_settings(self):
         try:
@@ -305,27 +381,22 @@ class MainWindow(QMainWindow):
 
     def _build_filter_row(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        row.setSpacing(6)
+        row.setSpacing(8)
 
-        row.addWidget(QLabel("Title includes:"))
-        self._filter_include = QLineEdit()
-        self._filter_include.setPlaceholderText("e.g. VP, Director, Manager  (comma-separated)")
-        self._filter_include.setMaximumHeight(30)
-        self._filter_include.setText(self._settings.get("title_include", ""))
-        self._filter_include.textChanged.connect(self._save_filter_settings)
-        row.addWidget(self._filter_include, stretch=2)
-
-        row.addWidget(QLabel("excludes:"))
-        self._filter_exclude = QLineEdit()
-        self._filter_exclude.setPlaceholderText("e.g. intern, student")
-        self._filter_exclude.setMaximumHeight(30)
-        self._filter_exclude.setText(self._settings.get("title_exclude", ""))
-        self._filter_exclude.textChanged.connect(self._save_filter_settings)
-        row.addWidget(self._filter_exclude, stretch=1)
-
-        lbl = QLabel("(leave blank for all titles — filters apply to new contacts only)")
-        lbl.setStyleSheet("color: #888; font-size: 11px;")
+        lbl = QLabel("Title Filter:")
+        lbl.setStyleSheet("font-weight: bold;")
         row.addWidget(lbl)
+
+        self._filter_summary = QLabel()
+        self._filter_summary.setStyleSheet("color: #aaa; font-size: 11px;")
+        self._filter_summary.setWordWrap(False)
+        self._update_filter_summary()
+        row.addWidget(self._filter_summary, stretch=1)
+
+        btn_configure = QPushButton("Configure Titles…")
+        btn_configure.setMaximumHeight(30)
+        btn_configure.clicked.connect(self._show_title_filter_dialog)
+        row.addWidget(btn_configure)
 
         btn_folder = QPushButton("Open Output Folder")
         btn_folder.setMaximumHeight(30)
@@ -334,10 +405,139 @@ class MainWindow(QMainWindow):
 
         return row
 
-    def _save_filter_settings(self):
-        self._settings["title_include"] = self._filter_include.text().strip()
-        self._settings["title_exclude"] = self._filter_exclude.text().strip()
+    def _get_active_include_keywords(self) -> list[str]:
+        """Return list of active include keywords (checked defaults + custom)."""
+        enabled = self._settings.get("title_filter_enabled", {})
+        keywords = []
+        for group_keywords in _TITLE_FILTER_GROUPS.values():
+            for kw in group_keywords:
+                # Default to True if not explicitly set
+                if enabled.get(kw, True):
+                    keywords.append(kw)
+        custom = self._settings.get("title_filter_custom", "")
+        if custom:
+            keywords += [t.strip().lower() for t in custom.split(",") if t.strip()]
+        return keywords
+
+    def _update_filter_summary(self):
+        keywords = self._get_active_include_keywords()
+        exclude  = self._settings.get("title_exclude", "")
+        if not keywords:
+            self._filter_summary.setText("No filter active — pulling all titles")
+            return
+        # Show count + sample
+        sample = ", ".join(keywords[:6])
+        suffix = f" +{len(keywords)-6} more" if len(keywords) > 6 else ""
+        exc_note = f"  |  excludes: {exclude}" if exclude else ""
+        self._filter_summary.setText(f"{len(keywords)} keywords active: {sample}{suffix}{exc_note}")
+
+    def _show_title_filter_dialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Configure Title Filter")
+        dlg.setMinimumSize(620, 580)
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+
+        info = QLabel(
+            "Check the title keywords to include. Contacts whose title contains "
+            "ANY checked keyword will be kept. Uncheck all to pull every title."
+        )
+        info.setWordWrap(True)
+        info.setStyleSheet("color: #aaa; font-size: 11px;")
+        layout.addWidget(info)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        inner = QWidget()
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setSpacing(10)
+
+        enabled = self._settings.get("title_filter_enabled", {})
+        self._title_checkboxes: dict[str, QCheckBox] = {}
+
+        for group_name, keywords in _TITLE_FILTER_GROUPS.items():
+            grp_box = QGroupBox(group_name)
+            grp_layout = QVBoxLayout(grp_box)
+            grp_layout.setSpacing(3)
+
+            # Select All / None row
+            btn_row = QHBoxLayout()
+            btn_all  = QPushButton("All")
+            btn_none = QPushButton("None")
+            btn_all.setMaximumWidth(50)
+            btn_none.setMaximumWidth(50)
+            btn_all.setMaximumHeight(22)
+            btn_none.setMaximumHeight(22)
+            btn_row.addWidget(btn_all)
+            btn_row.addWidget(btn_none)
+            btn_row.addStretch()
+            grp_layout.addLayout(btn_row)
+
+            group_cbs = []
+            for kw in keywords:
+                cb = QCheckBox(kw)
+                cb.setChecked(enabled.get(kw, True))
+                self._title_checkboxes[kw] = cb
+                grp_layout.addWidget(cb)
+                group_cbs.append(cb)
+
+            # Wire All/None buttons for this group
+            btn_all.clicked.connect(lambda _, cbs=group_cbs: [c.setChecked(True) for c in cbs])
+            btn_none.clicked.connect(lambda _, cbs=group_cbs: [c.setChecked(False) for c in cbs])
+
+            inner_layout.addWidget(grp_box)
+
+        inner_layout.addStretch()
+        scroll.setWidget(inner)
+        layout.addWidget(scroll, stretch=1)
+
+        # Custom keywords
+        custom_box = QGroupBox("Custom Keywords (comma-separated)")
+        custom_layout = QVBoxLayout(custom_box)
+        custom_edit = QLineEdit()
+        custom_edit.setPlaceholderText("e.g. landman, data scientist, technical advisor")
+        custom_edit.setText(self._settings.get("title_filter_custom", ""))
+        custom_layout.addWidget(custom_edit)
+        layout.addWidget(custom_box)
+
+        # Exclude keywords
+        excl_box = QGroupBox("Exclude Keywords (comma-separated)")
+        excl_layout = QVBoxLayout(excl_box)
+        excl_edit = QLineEdit()
+        excl_edit.setPlaceholderText("e.g. intern, student, professor")
+        excl_edit.setText(self._settings.get("title_exclude", ""))
+        excl_layout.addWidget(excl_edit)
+        layout.addWidget(excl_box)
+
+        # Global Select All / None
+        global_row = QHBoxLayout()
+        btn_global_all  = QPushButton("Select All Defaults")
+        btn_global_none = QPushButton("Deselect All Defaults")
+        btn_global_all.clicked.connect(lambda: [cb.setChecked(True) for cb in self._title_checkboxes.values()])
+        btn_global_none.clicked.connect(lambda: [cb.setChecked(False) for cb in self._title_checkboxes.values()])
+        global_row.addWidget(btn_global_all)
+        global_row.addWidget(btn_global_none)
+        global_row.addStretch()
+        layout.addLayout(global_row)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        # Save state
+        self._settings["title_filter_enabled"] = {
+            kw: cb.isChecked() for kw, cb in self._title_checkboxes.items()
+        }
+        self._settings["title_filter_custom"] = custom_edit.text().strip()
+        self._settings["title_exclude"]        = excl_edit.text().strip()
         self._save_settings()
+        self._update_filter_summary()
 
     def _build_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
@@ -1373,15 +1573,13 @@ class MainWindow(QMainWindow):
 
         # Title filter
         title = contact.get("title", "").lower()
-        inc = self._filter_include.text().strip()
-        exc = self._filter_exclude.text().strip()
-        if inc:
-            terms = [t.strip().lower() for t in inc.split(",") if t.strip()]
-            if terms and not any(t in title for t in terms):
-                return
+        inc_keywords = self._get_active_include_keywords()
+        if inc_keywords and not any(kw in title for kw in inc_keywords):
+            return
+        exc = self._settings.get("title_exclude", "")
         if exc:
-            terms = [t.strip().lower() for t in exc.split(",") if t.strip()]
-            if any(t in title for t in terms):
+            exc_terms = [t.strip().lower() for t in exc.split(",") if t.strip()]
+            if any(t in title for t in exc_terms):
                 return
 
         # Auto-fill priority from title
