@@ -4,3 +4,6 @@ __pycache__/
 .env
 venv/
 .venv/
+
+# HubSpot knowledge base — contains real email addresses, generated locally
+emailer/hubspot_knowledge.json

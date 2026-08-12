@@ -2,6 +2,9 @@
 Detect a company's email pattern. All sources are free, no API keys required.
 Sources tried in order:
 
+  0. HubSpot knowledge base — patterns derived from real name+email pairs in
+                              our own CRM. Most reliable source: definitively
+                              confirmed from actual contacts. Checked first.
   1. emailformat.com  — crowdsourced format database, no key needed
   2. Company website  — scrapes contact/team/about pages looking for
                         name+email pairs (definitive) or dot-pattern emails (reliable)
@@ -19,12 +22,31 @@ Catch-all domains + blocked port 25 = no automated way to determine format.
 Use Check Domains.bat to set the pattern manually for those companies.
 """
 
+import json
 import re
 import logging
 import time
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
+
+_KB_PATH = Path(__file__).parent / "hubspot_knowledge.json"
+_KB: dict | None = None
+
+def _load_kb() -> dict:
+    global _KB
+    if _KB is None:
+        try:
+            _KB = json.loads(_KB_PATH.read_text(encoding="utf-8")) if _KB_PATH.exists() else {}
+        except Exception:
+            _KB = {}
+    return _KB
+
+
+def get_kb_samples(domain: str) -> list[str]:
+    """Return up to 3 sample emails from the HubSpot KB for a domain (for reference/debugging)."""
+    return _load_kb().get(domain, {}).get("samples", [])
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +118,17 @@ _ROLE_LOCALS = {
 def detect_pattern(domain: str) -> tuple[str | None, str]:
     """
     Return (pattern, source). pattern is None when detection fails.
-    source is 'emailformat', 'scraped', 'ddg', or 'none'.
+    source is 'hubspot', 'emailformat', 'scraped', 'ddg', or 'none'.
     """
+    # 0. HubSpot knowledge base — real name+email pairs, most reliable
+    kb = _load_kb()
+    entry = kb.get(domain)
+    if entry and entry.get("pattern"):
+        pattern = entry["pattern"]
+        logger.info("Pattern for %s: %s (HubSpot KB, confidence=%.0f%%, n=%d)",
+                    domain, pattern, entry.get("confidence", 1) * 100, entry.get("sample_count", 1))
+        return pattern, "hubspot"
+
     # 1. emailformat.com
     pattern = _emailformat_lookup(domain)
     if pattern:

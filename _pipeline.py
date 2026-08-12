@@ -189,7 +189,7 @@ for ci, company in enumerate(companies):
         cache_put(company, domain, pattern, pattern_source)
 
     # Step 2: SMTP format probe (skip if already reliably confirmed)
-    if pattern_source not in ("smtp-verified", "scraped", "emailformat", "manual"):
+    if pattern_source not in ("smtp-verified", "scraped", "emailformat", "hubspot", "manual"):
         probed = probe_format(domain, group)
         if probed:
             pattern        = probed
@@ -226,7 +226,7 @@ for ci, company in enumerate(companies):
                 status = "bounced"
             time.sleep(random.uniform(*CONTACT_DELAY))
 
-        if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "smtp-verified", "manual"):
+        if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual"):
             status = "catch-all-confirmed"
 
         if email and is_bounced(email):

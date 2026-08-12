@@ -91,7 +91,7 @@ for ci, company in enumerate(by_company.keys()):
         cache_put(company, domain, pattern, pattern_source)
 
     if pattern:
-        status_label = "pattern-confirmed" if pattern_source in ("scraped", "emailformat", "smtp-verified", "manual") else "pattern-ddg"
+        status_label = "pattern-confirmed" if pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual") else "pattern-ddg"
     else:
         status_label = "best-guess"
 

@@ -117,8 +117,9 @@ class EmailWorker(QThread):
             cache_put(company, domain, pattern, pattern_source)
 
         if pattern:
-            confidence = {"scraped": "from website", "emailformat": "emailformat.com",
-                          "ddg": "via search", "smtp-verified": "SMTP confirmed",
+            confidence = {"hubspot": "HubSpot KB", "scraped": "from website",
+                          "emailformat": "emailformat.com", "ddg": "via search",
+                          "smtp-verified": "SMTP confirmed",
                           "manual": "manual"}.get(pattern_source, pattern_source)
             self.company_status.emit(company, f"Pattern: {pattern} ({confidence})")
         else:
@@ -127,7 +128,7 @@ class EmailWorker(QThread):
         # Step 4: SMTP format probe — try all variations on one contact to confirm
         # which format actually gets through. Skip if pattern already smtp-verified
         # or if the domain is catch-all (probe would accept everything).
-        if pattern_source not in ("smtp-verified", "scraped", "emailformat", "manual"):
+        if pattern_source not in ("smtp-verified", "scraped", "emailformat", "hubspot", "manual"):
             probed = self._probe_format(company, domain, contacts)
             if probed:
                 pattern        = probed
@@ -161,7 +162,7 @@ class EmailWorker(QThread):
                     status = "bounced"
 
             # Upgrade catch-all-risky if pattern is reliably sourced
-            if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "smtp-verified", "manual"):
+            if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual"):
                 status = "catch-all-confirmed"
 
             catch_all = status in ("catch-all-confirmed", "catch-all-risky")
