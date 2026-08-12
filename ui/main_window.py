@@ -1,5 +1,6 @@
-import logging
 import csv
+import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -8,51 +9,182 @@ from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QLineEdit, QPushButton, QLabel, QProgressBar, QFileDialog,
     QGroupBox, QHeaderView, QMenu, QMessageBox, QAbstractItemView,
-    QApplication, QTabWidget,
+    QApplication, QTabWidget, QCheckBox, QRadioButton, QButtonGroup,
+    QDialog, QTextEdit, QScrollArea, QFormLayout, QSpinBox,
+    QComboBox, QFrame, QSizePolicy, QDialogButtonBox,
 )
-from PySide6.QtCore import Qt, Slot, QUrl
-from PySide6.QtGui import QColor, QFont, QDesktopServices
+from PySide6.QtCore import Qt, Slot, QUrl, QTimer
+from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequence, QAction
 
 from scraper.worker import SearchWorker
-from emailer.worker import EmailWorker
+from emailer.worker import EmailWorker, DROP_STATUSES
 from verifier.worker import VerifyWorker
 from output.csv_writer import append_contact, export_contacts, get_output_dir
+from output.basin_mapper import get_basin
 
 logger = logging.getLogger(__name__)
 
-COLUMNS = ["First Name", "Last Name", "Title", "Company", "Location", "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date"]
-FIELDS  = ["first_name", "last_name", "title", "company", "location", "basin", "linkedin_url", "emp_status", "source", "date_pulled"]
+# ── Column definitions ───────────────────────────────────────────────────────
 
-_EMP_STATUS_COLORS = {
-    "current": "#2E7D32",   # green
-    "stale":   "#C62828",   # red
-    "unknown": "#888888",   # gray
+COLUMNS = ["First Name", "Last Name", "Title", "Company", "Location",
+           "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date"]
+FIELDS  = ["first_name", "last_name", "title", "company", "location",
+           "basin", "linkedin_url", "emp_status", "source", "date_pulled"]
+
+_EMAIL_COLS   = ["First Name", "Last Name", "Title", "Company",
+                 "Email", "Status", "Confidence", "Source", "LinkedIn URL"]
+_EMAIL_FIELDS = ["first_name", "last_name", "title", "company",
+                 "email", "email_status", "confidence", "email_source", "linkedin_url"]
+
+# ── CRM field mapping presets ────────────────────────────────────────────────
+
+_CRM_PRESETS = {
+    "HubSpot": {
+        "first_name":   "First Name",
+        "last_name":    "Last Name",
+        "title":        "Job Title",
+        "company":      "Company Name",
+        "email":        "Email",
+        "location":     "City",
+        "basin":        "Basin",
+        "linkedin_url": "LinkedIn Profile URL",
+        "date_pulled":  "Create Date",
+        "confidence":   "Lead Confidence",
+        "emp_status":   "Employment Status",
+    },
+    "Salesforce": {
+        "first_name":   "FirstName",
+        "last_name":    "LastName",
+        "title":        "Title",
+        "company":      "Company",
+        "email":        "Email",
+        "location":     "MailingCity",
+        "basin":        "Basin__c",
+        "linkedin_url": "LinkedIn__c",
+        "date_pulled":  "LeadSource_Date__c",
+        "confidence":   "Lead_Confidence__c",
+        "emp_status":   "Employment_Status__c",
+    },
+    "Generic CSV": {
+        "first_name":   "first_name",
+        "last_name":    "last_name",
+        "title":        "title",
+        "company":      "company",
+        "email":        "email",
+        "location":     "location",
+        "basin":        "basin",
+        "linkedin_url": "linkedin_url",
+        "date_pulled":  "date_pulled",
+        "confidence":   "confidence",
+        "emp_status":   "emp_status",
+    },
 }
 
-_STATUS = {
+_ALL_EXPORT_FIELDS = [
+    ("first_name",   "First Name"),
+    ("last_name",    "Last Name"),
+    ("title",        "Title / Role"),
+    ("company",      "Company"),
+    ("email",        "Email"),
+    ("confidence",   "Confidence"),
+    ("email_status", "Email Status"),
+    ("location",     "Location"),
+    ("basin",        "Basin"),
+    ("linkedin_url", "LinkedIn URL"),
+    ("emp_status",   "Emp. Status"),
+    ("date_pulled",  "Date Pulled"),
+]
+
+# ── Status / color constants ─────────────────────────────────────────────────
+
+_EMP_COLORS = {
+    "current": "#2E7D32",
+    "stale":   "#C62828",
+    "unknown": "#888888",
+}
+
+_EMAIL_COLORS = {
+    "verified":              "#2E7D32",
+    "catch-all-confirmed":   "#E65100",
+    "catch-all-risky":       "#C62828",
+    "bounced":               "#C62828",
+}
+
+_QUEUE_STATUS = {
     "pending": ("⏳", "#888888"),
     "running": ("🔵", "#1565C0"),
     "done":    ("✅", "#2E7D32"),
     "failed":  ("❌", "#C62828"),
 }
 
+_SETTINGS_FILE = get_output_dir() / "settings.json"
+_DEFAULT_SETTINGS = {
+    "dark_mode":      False,
+    "output_dir":     str(get_output_dir()),
+    "search_delay":   2,
+    "default_format": "HubSpot",
+}
+
+
+def _confidence(status: str) -> str:
+    if status in ("verified",):
+        return "High"
+    if status in ("catch-all-confirmed", "pattern-confirmed", "emailformat"):
+        return "Medium"
+    if status in ("catch-all-risky", "best-guess", "unknown", "pattern-ddg"):
+        return "Low"
+    return ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Main window
+# ═══════════════════════════════════════════════════════════════════════════════
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Contact Puller — O&G LinkedIn Scraper")
-        self.setMinimumSize(1300, 740)
+        self.setWindowTitle("ContactPuller — O&G Sales Intelligence")
+        self.setMinimumSize(1350, 780)
 
-        self._contacts:       list[dict]       = []
-        self._company_status: dict[str, str]   = {}
+        # ── Core state ──────────────────────────────────────────────────────
+        self._contacts:       list[dict] = []
+        self._company_status: dict[str, str] = {}
+        self._seen_urls:      set[str] = set()          # duplicate detection
         self._worker:         SearchWorker | None = None
         self._verify_worker:  VerifyWorker | None = None
         self._pipeline_mode:  bool = False
 
+        self._email_contacts: list[dict] = []
+        self._email_worker:   EmailWorker | None = None
+        self._email_enriched: list[dict] = []
+        self._email_company_progress: dict[str, tuple[int,int]] = {}
+
+        self._crm_contacts:   list[dict] = []           # contacts loaded in export tab
+        self._settings:       dict = {}
+
+        self._load_settings()
         self._build_ui()
         self._apply_style()
+        self._register_shortcuts()
 
-    # ── UI Construction ──────────────────────────────────────────────────
+    # ── Settings ────────────────────────────────────────────────────────────
+
+    def _load_settings(self):
+        try:
+            if _SETTINGS_FILE.exists():
+                self._settings = json.loads(_SETTINGS_FILE.read_text())
+        except Exception:
+            pass
+        for k, v in _DEFAULT_SETTINGS.items():
+            self._settings.setdefault(k, v)
+
+    def _save_settings(self):
+        try:
+            _SETTINGS_FILE.write_text(json.dumps(self._settings, indent=2))
+        except Exception:
+            pass
+
+    # ── UI Construction ──────────────────────────────────────────────────────
 
     def _build_ui(self):
         root_widget = QWidget()
@@ -62,9 +194,47 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
 
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_puller_tab(), "Contact Puller")
-        self._tabs.addTab(self._build_email_tab(), "Email Enricher")
+        self._tabs.addTab(self._build_puller_tab(),  "1 · Contact Puller")
+        self._tabs.addTab(self._build_email_tab(),   "2 · Email Enricher")
+        self._tabs.addTab(self._build_export_tab(),  "3 · CRM Export")
         root.addWidget(self._tabs)
+
+        self._build_menu_bar()
+
+        # Persistent status bar (cross-tab)
+        self.statusBar().showMessage("Ready.")
+        self.statusBar().setStyleSheet("QStatusBar { font-size: 12px; }")
+
+    def _build_menu_bar(self):
+        menu_bar = self.menuBar()
+
+        # File menu
+        file_menu = menu_bar.addMenu("File")
+        act_settings = QAction("Settings…", self)
+        act_settings.triggered.connect(self._show_settings_dialog)
+        file_menu.addAction(act_settings)
+
+        self._act_dark = QAction("Dark Mode", self, checkable=True)
+        self._act_dark.setChecked(self._settings.get("dark_mode", False))
+        self._act_dark.triggered.connect(self._toggle_dark_mode)
+        file_menu.addAction(self._act_dark)
+
+        file_menu.addSeparator()
+        act_export = QAction("Export CSV\tCtrl+S", self)
+        act_export.triggered.connect(self._export_csv)
+        file_menu.addAction(act_export)
+
+        # Tools menu
+        tools_menu = menu_bar.addMenu("Tools")
+        act_check = QAction("Check Domains (CLI)…", self)
+        act_check.triggered.connect(lambda: QMessageBox.information(
+            self, "Check Domains",
+            "Run Check Domains.bat from the project folder\n"
+            "to manually review and correct domain/pattern assignments."
+        ))
+        tools_menu.addAction(act_check)
+
+    # ── Contact Puller tab ───────────────────────────────────────────────────
 
     def _build_puller_tab(self) -> QWidget:
         tab = QWidget()
@@ -88,6 +258,7 @@ class MainWindow(QMainWindow):
 
         for text, slot in [
             ("Add Company",    self._add_company),
+            ("Paste List",     self._paste_companies),
             ("Load from File", self._load_from_file),
         ]:
             btn = QPushButton(text)
@@ -112,8 +283,7 @@ class MainWindow(QMainWindow):
         self._btn_verify.setObjectName("btn_verify")
         self._btn_verify.setMinimumHeight(38)
         self._btn_verify.setToolTip(
-            "Check each contact's LinkedIn profile to confirm they still work at the target company.\n"
-            "Uses the public og:title tag — no login required."
+            "Check each contact's LinkedIn profile to confirm they still work at the target company."
         )
         self._btn_verify.clicked.connect(self._toggle_verify)
         row.addWidget(self._btn_verify)
@@ -122,8 +292,7 @@ class MainWindow(QMainWindow):
         self._btn_pipeline.setObjectName("btn_pipeline")
         self._btn_pipeline.setMinimumHeight(38)
         self._btn_pipeline.setToolTip(
-            "Pull contacts, find email domains, probe format variations, generate and verify all emails.\n"
-            "Automatically removes bounced addresses and exports viable contacts."
+            "Pull contacts → detect email patterns → generate and verify all emails → export viable contacts."
         )
         self._btn_pipeline.clicked.connect(self._pipeline_start)
         row.addWidget(self._btn_pipeline)
@@ -138,7 +307,7 @@ class MainWindow(QMainWindow):
     def _build_splitter(self) -> QSplitter:
         splitter = QSplitter(Qt.Horizontal)
 
-        # ── Left: company queue ──────────────────────────────────────────
+        # Left: company queue
         left_box = QGroupBox("Company Queue")
         left_layout = QVBoxLayout(left_box)
         left_layout.setSpacing(6)
@@ -146,6 +315,8 @@ class MainWindow(QMainWindow):
         self._queue = QListWidget()
         self._queue.setMinimumWidth(240)
         self._queue.setSpacing(2)
+        self._queue.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._queue.customContextMenuRequested.connect(self._queue_context_menu)
         left_layout.addWidget(self._queue)
 
         btn_clear = QPushButton("Clear Pending")
@@ -154,25 +325,29 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(left_box)
 
-        # ── Right: results table ─────────────────────────────────────────
+        # Right: results table
         right_box = QGroupBox("Results")
         right_layout = QVBoxLayout(right_box)
         right_layout.setSpacing(6)
 
+        hdr = QHBoxLayout()
         self._count_label = QLabel("0 contacts found")
-        font = QFont()
-        font.setBold(True)
+        font = QFont(); font.setBold(True)
         self._count_label.setFont(font)
-        right_layout.addWidget(self._count_label)
+        hdr.addWidget(self._count_label)
+        self._dup_label = QLabel("")
+        self._dup_label.setStyleSheet("color: #E65100; font-size: 11px;")
+        hdr.addWidget(self._dup_label)
+        hdr.addStretch()
+        right_layout.addLayout(hdr)
 
         self._table = QTableWidget()
         self._table.setColumnCount(len(COLUMNS))
         self._table.setHorizontalHeaderLabels(COLUMNS)
         hh = self._table.horizontalHeader()
         hh.setSectionResizeMode(QHeaderView.Stretch)
-        # Give URL column a bit more room (now index 6 with first_name + last_name)
-        hh.setSectionResizeMode(6, QHeaderView.Interactive)
-        self._table.setColumnWidth(6, 280)
+        hh.setSectionResizeMode(FIELDS.index("linkedin_url"), QHeaderView.Interactive)
+        self._table.setColumnWidth(FIELDS.index("linkedin_url"), 280)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSortingEnabled(True)
@@ -183,27 +358,20 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self._table)
 
         splitter.addWidget(right_box)
-        splitter.setSizes([265, 1035])
+        splitter.setSizes([265, 1085])
         return splitter
 
     def _build_bottom_bar(self) -> QHBoxLayout:
         row = QHBoxLayout()
-
         self._progress = QProgressBar()
         self._progress.setVisible(False)
         self._progress.setMaximumHeight(16)
         row.addWidget(self._progress, stretch=1)
-
-        self._status = QLabel("Ready.")
-        row.addWidget(self._status, stretch=3)
-
-        out_label = QLabel(f"Output: {get_output_dir()}")
-        out_label.setStyleSheet("color: #777; font-size: 11px;")
-        row.addWidget(out_label, stretch=2)
-
+        self._puller_status = QLabel("Ready.")
+        row.addWidget(self._puller_status, stretch=5)
         return row
 
-    # ── Email Enricher Tab ───────────────────────────────────────────────
+    # ── Email Enricher tab ───────────────────────────────────────────────────
 
     def _build_email_tab(self) -> QWidget:
         tab = QWidget()
@@ -211,18 +379,15 @@ class MainWindow(QMainWindow):
         root.setSpacing(8)
         root.setContentsMargins(10, 10, 10, 10)
 
-        # Top toolbar
         top = QHBoxLayout()
-        btn_use = QPushButton("Use Contacts from Puller")
-        btn_use.setMinimumHeight(36)
-        btn_use.setToolTip("Load contacts already found in the Contact Puller tab")
-        btn_use.clicked.connect(self._email_load_from_puller)
-        top.addWidget(btn_use)
-
-        btn_load = QPushButton("Load from CSV")
-        btn_load.setMinimumHeight(36)
-        btn_load.clicked.connect(self._email_load_from_csv)
-        top.addWidget(btn_load)
+        for text, slot in [
+            ("Use Contacts from Puller", self._email_load_from_puller),
+            ("Load from CSV",            self._email_load_from_csv),
+        ]:
+            btn = QPushButton(text)
+            btn.setMinimumHeight(36)
+            btn.clicked.connect(slot)
+            top.addWidget(btn)
 
         top.addStretch()
 
@@ -239,6 +404,14 @@ class MainWindow(QMainWindow):
         self._email_btn_stop.clicked.connect(self._email_stop)
         top.addWidget(self._email_btn_stop)
 
+        self._email_btn_retry = QPushButton("Retry Failed")
+        self._email_btn_retry.setObjectName("btn_retry")
+        self._email_btn_retry.setMinimumHeight(36)
+        self._email_btn_retry.setToolTip("Re-run enrichment on contacts where email lookup failed.")
+        self._email_btn_retry.setEnabled(False)
+        self._email_btn_retry.clicked.connect(self._email_retry_failed)
+        top.addWidget(self._email_btn_retry)
+
         btn_export = QPushButton("Export Enriched CSV")
         btn_export.setMinimumHeight(36)
         btn_export.clicked.connect(self._email_export)
@@ -246,7 +419,6 @@ class MainWindow(QMainWindow):
 
         root.addLayout(top)
 
-        # Company status panel + results table
         splitter = QSplitter(Qt.Horizontal)
 
         left_box = QGroupBox("Companies")
@@ -264,11 +436,13 @@ class MainWindow(QMainWindow):
         self._email_count_label.setFont(font)
         right_layout.addWidget(self._email_count_label)
 
-        _EMAIL_COLS = ["First Name", "Last Name", "Title", "Company", "Email", "Status", "Source", "LinkedIn URL"]
         self._email_table = QTableWidget()
         self._email_table.setColumnCount(len(_EMAIL_COLS))
         self._email_table.setHorizontalHeaderLabels(_EMAIL_COLS)
-        self._email_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        hh2 = self._email_table.horizontalHeader()
+        hh2.setSectionResizeMode(QHeaderView.Stretch)
+        hh2.setSectionResizeMode(_EMAIL_FIELDS.index("linkedin_url"), QHeaderView.Interactive)
+        self._email_table.setColumnWidth(_EMAIL_FIELDS.index("linkedin_url"), 250)
         self._email_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._email_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._email_table.setAlternatingRowColors(True)
@@ -278,277 +452,324 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self._email_table)
 
         splitter.addWidget(right_box)
-        splitter.setSizes([265, 1035])
+        splitter.setSizes([265, 1085])
         root.addWidget(splitter, stretch=1)
 
-        # Bottom bar
         bottom = QHBoxLayout()
         self._email_progress = QProgressBar()
         self._email_progress.setVisible(False)
         self._email_progress.setMaximumHeight(16)
         bottom.addWidget(self._email_progress, stretch=1)
-
         self._email_status = QLabel("Load contacts to begin.")
-        bottom.addWidget(self._email_status, stretch=4)
+        bottom.addWidget(self._email_status, stretch=5)
         root.addLayout(bottom)
-
-        # Internal state
-        self._email_contacts: list[dict] = []
-        self._email_worker: EmailWorker | None = None
-        self._email_enriched: list[dict] = []
 
         return tab
 
-    # ── Email tab: load contacts ─────────────────────────────────────────
+    # ── CRM Export tab ───────────────────────────────────────────────────────
 
-    def _email_load_from_puller(self):
-        if not self._contacts:
-            self._email_status.setText("No contacts in Contact Puller yet. Run a search first.")
+    def _build_export_tab(self) -> QWidget:
+        tab = QWidget()
+        outer = QHBoxLayout(tab)
+        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setSpacing(12)
+
+        # ── Left: options panel (scrollable) ────────────────────────────────
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFixedWidth(380)
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        opts = QWidget()
+        opts_layout = QVBoxLayout(opts)
+        opts_layout.setSpacing(12)
+        opts_layout.setContentsMargins(4, 4, 4, 4)
+
+        # Campaign name
+        camp_box = QGroupBox("Campaign")
+        camp_layout = QFormLayout(camp_box)
+        self._crm_campaign = QLineEdit()
+        self._crm_campaign.setPlaceholderText("e.g. Q3 Permian Outreach")
+        camp_layout.addRow("Name:", self._crm_campaign)
+        opts_layout.addWidget(camp_box)
+
+        # Source
+        src_box = QGroupBox("Source")
+        src_layout = QVBoxLayout(src_box)
+        self._crm_src_enricher = QRadioButton("From Email Enricher (current session)")
+        self._crm_src_enricher.setChecked(True)
+        self._crm_src_csv = QRadioButton("Load from CSV file…")
+        self._crm_src_enricher.toggled.connect(self._crm_update_preview)
+        self._crm_src_csv.toggled.connect(self._crm_maybe_load_csv)
+        src_layout.addWidget(self._crm_src_enricher)
+        src_layout.addWidget(self._crm_src_csv)
+        self._crm_src_label = QLabel("0 contacts in session")
+        self._crm_src_label.setStyleSheet("color: #666; font-size: 11px; padding-left: 4px;")
+        src_layout.addWidget(self._crm_src_label)
+        opts_layout.addWidget(src_box)
+
+        # CRM format preset
+        fmt_box = QGroupBox("CRM Format")
+        fmt_layout = QVBoxLayout(fmt_box)
+        self._crm_format_group = QButtonGroup()
+        for i, preset in enumerate(_CRM_PRESETS):
+            rb = QRadioButton(preset)
+            if preset == self._settings.get("default_format", "HubSpot"):
+                rb.setChecked(True)
+            rb.toggled.connect(self._crm_update_preview)
+            self._crm_format_group.addButton(rb, i)
+            fmt_layout.addWidget(rb)
+        opts_layout.addWidget(fmt_box)
+
+        # Column selector
+        col_box = QGroupBox("Columns to Export")
+        col_layout = QVBoxLayout(col_box)
+        self._crm_col_checks: dict[str, QCheckBox] = {}
+        default_on = {"first_name", "last_name", "title", "company", "email",
+                      "confidence", "location", "basin", "linkedin_url"}
+        for field, label in _ALL_EXPORT_FIELDS:
+            cb = QCheckBox(label)
+            cb.setChecked(field in default_on)
+            cb.toggled.connect(self._crm_update_preview)
+            self._crm_col_checks[field] = cb
+            col_layout.addWidget(cb)
+        opts_layout.addWidget(col_box)
+
+        # Status filters
+        filter_box = QGroupBox("Include Email Status")
+        filter_layout = QVBoxLayout(filter_box)
+        self._crm_status_checks: dict[str, QCheckBox] = {}
+        statuses = [
+            ("verified",            "Verified (SMTP confirmed)",    True),
+            ("catch-all-confirmed", "Catch-all confirmed",          True),
+            ("catch-all-risky",     "Catch-all risky",              False),
+            ("unknown",             "Unknown (port 25 blocked)",    False),
+            ("best-guess",          "Best-guess (no SMTP)",         True),
+            ("pattern-confirmed",   "Pattern confirmed (scraped)",  True),
+            ("pattern-ddg",         "Pattern via DDG",              True),
+            ("_drop",               "Show dropped (no domain/MX/error)", False),
+        ]
+        for key, label, default in statuses:
+            cb = QCheckBox(label)
+            cb.setChecked(default)
+            cb.toggled.connect(self._crm_update_preview)
+            self._crm_status_checks[key] = cb
+            filter_layout.addWidget(cb)
+        opts_layout.addWidget(filter_box)
+
+        # Options
+        opt_box = QGroupBox("Options")
+        opt_layout = QVBoxLayout(opt_box)
+        self._crm_dedup = QCheckBox("Remove duplicate emails")
+        self._crm_dedup.setChecked(True)
+        self._crm_dedup.toggled.connect(self._crm_update_preview)
+        self._crm_require_email = QCheckBox("Exclude contacts without email")
+        self._crm_require_email.setChecked(True)
+        self._crm_require_email.toggled.connect(self._crm_update_preview)
+        opt_layout.addWidget(self._crm_dedup)
+        opt_layout.addWidget(self._crm_require_email)
+        opts_layout.addWidget(opt_box)
+
+        opts_layout.addStretch()
+        scroll.setWidget(opts)
+        outer.addWidget(scroll)
+
+        # ── Right: preview + export ──────────────────────────────────────────
+        right = QVBoxLayout()
+
+        preview_box = QGroupBox("Export Preview")
+        preview_layout = QVBoxLayout(preview_box)
+
+        self._crm_preview_label = QLabel("0 contacts will be exported")
+        font = QFont(); font.setBold(True); font.setPointSize(13)
+        self._crm_preview_label.setFont(font)
+        preview_layout.addWidget(self._crm_preview_label)
+
+        self._crm_preview_table = QTableWidget()
+        self._crm_preview_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._crm_preview_table.setAlternatingRowColors(True)
+        self._crm_preview_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        preview_layout.addWidget(self._crm_preview_table)
+
+        right.addWidget(preview_box, stretch=1)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        self._crm_refresh_btn = QPushButton("Refresh Preview")
+        self._crm_refresh_btn.setMinimumHeight(38)
+        self._crm_refresh_btn.clicked.connect(self._crm_refresh_preview)
+        btn_row.addWidget(self._crm_refresh_btn)
+
+        self._crm_export_btn = QPushButton("Export to CRM CSV")
+        self._crm_export_btn.setObjectName("btn_start")
+        self._crm_export_btn.setMinimumHeight(38)
+        self._crm_export_btn.clicked.connect(self._crm_export)
+        btn_row.addWidget(self._crm_export_btn)
+
+        right.addLayout(btn_row)
+
+        self._crm_status_label = QLabel("")
+        self._crm_status_label.setStyleSheet("color: #555; font-size: 11px;")
+        right.addWidget(self._crm_status_label)
+
+        outer.addLayout(right, stretch=1)
+        return tab
+
+    # ── CRM Export logic ─────────────────────────────────────────────────────
+
+    def _crm_maybe_load_csv(self, checked: bool):
+        if not checked:
             return
-        self._email_contacts = [dict(c) for c in self._contacts]
-        self._populate_email_table(self._email_contacts)
-        self._email_status.setText(f"{len(self._email_contacts)} contacts loaded from Puller.")
-
-    def _email_load_from_csv(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Load Contacts CSV", str(get_output_dir()), "CSV Files (*.csv)"
         )
-        if not path:
-            return
-        contacts = []
-        try:
-            with open(path, encoding="utf-8") as f:
-                for row in csv.DictReader(f):
-                    contacts.append({k.lower().replace(" ", "_"): v for k, v in row.items()})
-            self._email_contacts = contacts
-            self._populate_email_table(contacts)
-            self._email_status.setText(f"{len(contacts)} contacts loaded from {Path(path).name}")
-        except Exception as e:
-            QMessageBox.warning(self, "Load Error", str(e))
-
-    def _populate_email_table(self, contacts: list[dict]):
-        self._email_table.setSortingEnabled(False)
-        self._email_table.setRowCount(0)
-        self._email_company_list.clear()
-
-        companies_seen: set[str] = set()
-        for c in contacts:
-            row = self._email_table.rowCount()
-            self._email_table.insertRow(row)
-            for col, key in enumerate(["first_name", "last_name", "title", "company", "email",
-                                        "email_status", "email_source", "linkedin_url"]):
-                val = str(c.get(key, ""))
-                item = QTableWidgetItem(val)
-                if key == "linkedin_url":
-                    item.setForeground(QColor("#1565C0"))
-                self._email_table.setItem(row, col, item)
-
-            company = c.get("company", "")
-            if company and company not in companies_seen:
-                companies_seen.add(company)
-                li = QListWidgetItem(f"⏳  {company}")
-                li.setData(Qt.UserRole, company)
-                self._email_company_list.addItem(li)
-
-        self._email_table.setSortingEnabled(True)
-        self._email_count_label.setText(f"{len(contacts)} contacts loaded")
-
-    # ── Email tab: enrichment worker ─────────────────────────────────────
-
-    def _email_start(self):
-        if not self._email_contacts:
-            self._email_status.setText("Load contacts first.")
-            return
-
-        self._email_enriched = []
-        self._email_btn_start.setEnabled(False)
-        self._email_btn_stop.setEnabled(True)
-        self._email_progress.setVisible(True)
-        self._email_progress.setRange(0, len(self._email_contacts))
-        self._email_progress.setValue(0)
-
-        self._email_worker = EmailWorker(self._email_contacts)
-        self._email_worker.contact_enriched.connect(self._on_email_enriched)
-        self._email_worker.company_started.connect(self._on_email_company_started)
-        self._email_worker.company_status.connect(self._on_email_company_status)
-        self._email_worker.company_done.connect(self._on_email_company_done)
-        self._email_worker.status_update.connect(self._on_email_status)
-        self._email_worker.port25_blocked.connect(self._on_port25_blocked)
-        self._email_worker.all_done.connect(self._on_email_all_done)
-        self._email_worker.start()
-
-    def _email_stop(self):
-        if self._email_worker:
-            self._email_worker.stop()
-        self._email_btn_stop.setEnabled(False)
-        self._email_status.setText("Stopping after current contact...")
-
-    @Slot(dict)
-    def _on_email_enriched(self, contact: dict):
-        self._email_enriched.append(contact)
-        self._email_progress.setValue(len(self._email_enriched))
-
-        # Find row by LinkedIn URL and update in place
-        url = contact.get("linkedin_url", "")
-        for row in range(self._email_table.rowCount()):
-            url_item = self._email_table.item(row, 7)
-            if url_item and url_item.text() == url:
-                self._email_table.setSortingEnabled(False)
-                email      = contact.get("email", "")
-                status     = contact.get("email_status", "")
-                source     = contact.get("email_source", "")
-
-                self._email_table.setItem(row, 4, QTableWidgetItem(email))
-
-                status_item = QTableWidgetItem(status)
-                if status == "verified":
-                    status_item.setForeground(QColor("#2E7D32"))
-                elif status == "catch-all-confirmed":
-                    status_item.setForeground(QColor("#E65100"))   # amber — send cautiously
-                elif status == "catch-all-risky":
-                    status_item.setForeground(QColor("#C62828"))   # red — do not send
-                elif status == "invalid":
-                    status_item.setForeground(QColor("#C62828"))
-                else:
-                    status_item.setForeground(QColor("#888"))
-                self._email_table.setItem(row, 5, status_item)
-                self._email_table.setItem(row, 6, QTableWidgetItem(source))
-                self._email_table.setSortingEnabled(True)
-                break
-
-    @Slot(str, int)
-    def _on_email_company_started(self, company: str, count: int):
-        self._email_status.setText(f"Processing {company} ({count} contacts)...")
-        self._set_email_company_icon(company, "🔵")
-
-    @Slot(str, str)
-    def _on_email_company_status(self, company: str, msg: str):
-        self._email_status.setText(f"[{company}] {msg}")
-
-    @Slot(str, int, int)
-    def _on_email_company_done(self, company: str, verified: int, total: int):
-        icon = "✅" if verified > 0 else "⚠️"
-        self._set_email_company_icon(company, icon, suffix=f" ({verified}/{total} verified)")
-
-    @Slot(str)
-    def _on_email_status(self, msg: str):
-        self._email_status.setText(msg)
-
-    @Slot()
-    def _on_port25_blocked(self):
-        QMessageBox.warning(
-            self, "Port 25 Blocked",
-            "Outbound port 25 appears to be blocked by your ISP or network.\n\n"
-            "SMTP verification may fail for all addresses. Options:\n"
-            "  • Use a VPN with a clean IP\n"
-            "  • Run on a cloud VM (AWS/GCP allow port 25 on some instance types)\n\n"
-            "The tool will continue and mark results as 'error' where blocked."
-        )
-
-    @Slot()
-    def _on_email_all_done(self):
-        self._email_btn_start.setEnabled(True)
-        self._email_btn_stop.setEnabled(False)
-        self._email_progress.setVisible(False)
-        verified   = sum(1 for c in self._email_enriched if c.get("email_status") == "verified")
-        confirmed  = sum(1 for c in self._email_enriched if c.get("email_status") == "catch-all-confirmed")
-        risky      = sum(1 for c in self._email_enriched if c.get("email_status") == "catch-all-risky")
-        other      = len(self._email_enriched) - verified - confirmed - risky
-        self._email_status.setText(
-            f"Done. {verified} verified | "
-            f"{confirmed} catch-all (pattern confirmed) | "
-            f"{risky} catch-all (risky) | "
-            f"{other} unresolved."
-        )
-        if self._pipeline_mode:
-            self._pipeline_mode = False
-            self._btn_pipeline.setEnabled(True)
-            self._pipeline_finish()
-
-    def _pipeline_finish(self):
-        from emailer.worker import DROP_STATUSES
-        viable  = [c for c in self._email_enriched
-                   if c.get("email") and c.get("email_status", "") not in DROP_STATUSES]
-        dropped = len(self._email_enriched) - len(viable)
-
-        ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-        out_path = get_output_dir() / f"pipeline_{ts}.csv"
-        fields   = ["first_name", "last_name", "title", "company", "email",
-                    "email_status", "email_source", "location", "basin",
-                    "linkedin_url", "date_pulled"]
-        try:
-            with open(out_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=fields)
-                writer.writeheader()
-                writer.writerows([{k: c.get(k, "") for k in fields} for c in viable])
-            self._email_status.setText(
-                f"Pipeline complete. {len(viable)} viable contacts saved to {out_path.name}  |  "
-                f"{dropped} dropped (bounced / invalid)."
-            )
-        except Exception as e:
-            self._email_status.setText(f"Pipeline complete but export failed: {e}")
-
-    def _set_email_company_icon(self, company: str, icon: str, suffix: str = ""):
-        for i in range(self._email_company_list.count()):
-            item = self._email_company_list.item(i)
-            if item.data(Qt.UserRole) == company:
-                item.setText(f"{icon}  {company}{suffix}")
-                return
-
-    def _email_context_menu(self, pos):
-        row = self._email_table.rowAt(pos.y())
-        if row < 0:
-            return
-        menu = QMenu(self)
-        email_item = self._email_table.item(row, 4)
-        url_item   = self._email_table.item(row, 7)
-        if email_item and email_item.text():
-            menu.addAction("Copy Email").triggered.connect(
-                lambda: QApplication.clipboard().setText(email_item.text())
-            )
-        if url_item and url_item.text():
-            menu.addAction("Open LinkedIn").triggered.connect(
-                lambda: QDesktopServices.openUrl(QUrl(url_item.text()))
-            )
-        menu.addSeparator()
-        menu.addAction("Copy Row").triggered.connect(lambda: self._email_copy_row(row))
-        menu.exec(self._email_table.viewport().mapToGlobal(pos))
-
-    def _email_copy_row(self, row: int):
-        values = [
-            (self._email_table.item(row, c) or QTableWidgetItem("")).text()
-            for c in range(self._email_table.columnCount())
-        ]
-        QApplication.clipboard().setText("\t".join(values))
-
-    def _email_export(self):
-        if not self._email_enriched:
-            if not self._email_contacts:
-                self._email_status.setText("No contacts to export.")
-                return
-            data = self._email_contacts
+        if path:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    rows = list(csv.DictReader(f))
+                self._crm_contacts = [{k.lower().replace(" ", "_"): v for k, v in r.items()} for r in rows]
+                self._crm_src_label.setText(f"{len(self._crm_contacts)} contacts from {Path(path).name}")
+                self._crm_update_preview()
+            except Exception as e:
+                QMessageBox.warning(self, "Load Error", str(e))
+                self._crm_src_enricher.setChecked(True)
         else:
-            data = self._email_enriched
+            self._crm_src_enricher.setChecked(True)
 
-        default = str(get_output_dir() / "contacts_enriched.csv")
-        path, _ = QFileDialog.getSaveFileName(self, "Export Enriched CSV", default, "CSV Files (*.csv)")
+    def _crm_source_contacts(self) -> list[dict]:
+        if self._crm_src_enricher.isChecked():
+            base = self._email_enriched if self._email_enriched else self._email_contacts
+            self._crm_src_label.setText(f"{len(base)} contacts in session")
+            return base
+        return self._crm_contacts
+
+    def _crm_filtered_contacts(self) -> list[dict]:
+        contacts = self._crm_source_contacts()
+        allowed_statuses = {k for k, cb in self._crm_status_checks.items() if cb.isChecked()}
+        show_dropped = "_drop" in allowed_statuses
+        allowed_statuses.discard("_drop")
+
+        result = []
+        seen_emails: set[str] = set()
+        for c in contacts:
+            status = c.get("email_status", "")
+            email  = c.get("email", "").strip().lower()
+
+            # Status filter
+            if status in DROP_STATUSES and not show_dropped:
+                continue
+            if status not in DROP_STATUSES and status not in allowed_statuses:
+                continue
+
+            # Require email
+            if self._crm_require_email.isChecked() and not email:
+                continue
+
+            # Dedup by email
+            if self._crm_dedup.isChecked() and email:
+                if email in seen_emails:
+                    continue
+                seen_emails.add(email)
+
+            result.append(c)
+        return result
+
+    def _crm_active_fields(self) -> list[str]:
+        return [f for f, cb in self._crm_col_checks.items() if cb.isChecked()]
+
+    def _crm_active_preset(self) -> str:
+        for btn in self._crm_format_group.buttons():
+            if btn.isChecked():
+                return btn.text()
+        return "Generic CSV"
+
+    def _crm_update_preview(self):
+        # Debounce — schedule a refresh in 200ms to avoid hammering on rapid changes
+        if hasattr(self, "_crm_preview_timer"):
+            self._crm_preview_timer.stop()
+        self._crm_preview_timer = QTimer(self)
+        self._crm_preview_timer.setSingleShot(True)
+        self._crm_preview_timer.timeout.connect(self._crm_refresh_preview)
+        self._crm_preview_timer.start(200)
+
+    def _crm_refresh_preview(self):
+        contacts = self._crm_filtered_contacts()
+        fields   = self._crm_active_fields()
+        preset   = self._crm_active_preset()
+        mapping  = _CRM_PRESETS.get(preset, _CRM_PRESETS["Generic CSV"])
+        headers  = [mapping.get(f, f) for f in fields]
+
+        self._crm_preview_label.setText(f"{len(contacts)} contacts will be exported")
+
+        # Show up to 50 rows in preview
+        preview = contacts[:50]
+        self._crm_preview_table.setRowCount(len(preview))
+        self._crm_preview_table.setColumnCount(len(headers))
+        self._crm_preview_table.setHorizontalHeaderLabels(headers)
+        self._crm_preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        for row, c in enumerate(preview):
+            for col, field in enumerate(fields):
+                val = c.get(field, "") or ""
+                if field == "confidence" and not val:
+                    val = _confidence(c.get("email_status", ""))
+                self._crm_preview_table.setItem(row, col, QTableWidgetItem(str(val)))
+
+    def _crm_export(self):
+        contacts = self._crm_filtered_contacts()
+        if not contacts:
+            QMessageBox.warning(self, "Nothing to Export", "No contacts match the current filters.")
+            return
+
+        fields   = self._crm_active_fields()
+        preset   = self._crm_active_preset()
+        mapping  = _CRM_PRESETS.get(preset, _CRM_PRESETS["Generic CSV"])
+        campaign = self._crm_campaign.text().strip()
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_campaign = campaign.replace(" ", "_").replace("/", "-") if campaign else "export"
+        default_name = f"crm_{safe_campaign}_{ts}.csv"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export CRM CSV", str(get_output_dir() / default_name), "CSV Files (*.csv)"
+        )
         if not path:
             return
 
-        fields = ["first_name", "last_name", "title", "company", "email", "email_status",
-                  "email_source", "location", "basin", "linkedin_url", "source", "date_pulled"]
+        headers = [mapping.get(f, f) for f in fields]
         try:
             with open(path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=fields)
+                writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
                 writer.writeheader()
-                writer.writerows([{k: c.get(k, "") for k in fields} for c in data])
-            self._email_status.setText(f"Exported {len(data)} contacts to {path}")
+                for c in contacts:
+                    row = {}
+                    for field, header in zip(fields, headers):
+                        val = c.get(field, "") or ""
+                        if field == "confidence" and not val:
+                            val = _confidence(c.get("email_status", ""))
+                        row[header] = val
+                    if campaign:
+                        row["Campaign"] = campaign
+                    writer.writerow(row)
+
+            msg = f"Exported {len(contacts)} contacts to {Path(path).name}"
+            self._crm_status_label.setText(msg)
+            self.statusBar().showMessage(msg)
         except Exception as e:
             QMessageBox.warning(self, "Export Error", str(e))
 
+    # ── Style ────────────────────────────────────────────────────────────────
+
     def _apply_style(self):
+        dark = self._settings.get("dark_mode", False)
+        if dark:
+            self._apply_dark_style()
+        else:
+            self._apply_light_style()
+
+    def _apply_light_style(self):
         self.setStyleSheet("""
-            QMainWindow, QWidget          { background: #f4f4f4; }
+            QMainWindow, QWidget          { background: #f4f4f4; color: #111; }
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #ccc;
@@ -570,54 +791,226 @@ class MainWindow(QMainWindow):
             QPushButton:hover   { background: #d4d4d4; }
             QPushButton:pressed { background: #c8c8c8; }
             QPushButton#btn_start {
-                background: #388E3C;
-                color: white;
-                font-weight: bold;
-                border: none;
+                background: #388E3C; color: white;
+                font-weight: bold; border: none;
             }
             QPushButton#btn_start:hover   { background: #2E7D32; }
             QPushButton#btn_start:disabled { background: #aaa; color: #ddd; }
             QPushButton#btn_stop {
-                background: #D32F2F;
-                color: white;
-                font-weight: bold;
-                border: none;
+                background: #D32F2F; color: white;
+                font-weight: bold; border: none;
             }
             QPushButton#btn_stop:hover    { background: #C62828; }
             QPushButton#btn_stop:disabled { background: #bbb; color: #888; border: none; }
             QPushButton#btn_verify {
-                background: #1565C0;
-                color: white;
-                font-weight: bold;
-                border: none;
+                background: #1565C0; color: white;
+                font-weight: bold; border: none;
             }
             QPushButton#btn_verify:hover   { background: #0D47A1; }
             QPushButton#btn_verify:disabled { background: #aaa; color: #ddd; border: none; }
             QPushButton#btn_pipeline {
-                background: #6A1B9A;
-                color: white;
-                font-weight: bold;
-                border: none;
+                background: #6A1B9A; color: white;
+                font-weight: bold; border: none;
             }
             QPushButton#btn_pipeline:hover   { background: #4A148C; }
             QPushButton#btn_pipeline:disabled { background: #aaa; color: #ddd; border: none; }
+            QPushButton#btn_retry {
+                background: #E65100; color: white;
+                font-weight: bold; border: none;
+            }
+            QPushButton#btn_retry:hover   { background: #BF360C; }
+            QPushButton#btn_retry:disabled { background: #bbb; color: #888; border: none; }
             QTableWidget {
                 gridline-color: #ddd;
                 selection-background-color: #BBDEFB;
                 selection-color: #000;
             }
             QHeaderView::section {
-                background: #ececec;
-                font-weight: bold;
-                padding: 5px;
-                border: none;
+                background: #ececec; font-weight: bold;
+                padding: 5px; border: none;
                 border-right: 1px solid #ddd;
             }
             QListWidget::item         { padding: 5px 4px; }
             QListWidget::item:selected { background: #BBDEFB; color: #000; }
+            QScrollArea { border: none; }
         """)
 
-    # ── Queue management ─────────────────────────────────────────────────
+    def _apply_dark_style(self):
+        self.setStyleSheet("""
+            QMainWindow, QWidget, QDialog { background: #1e1e1e; color: #e0e0e0; }
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #444;
+                border-radius: 6px;
+                margin-top: 8px;
+                padding-top: 12px;
+                color: #e0e0e0;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px; padding: 0 4px;
+            }
+            QPushButton {
+                border-radius: 4px; padding: 4px 14px;
+                background: #333; border: 1px solid #555; color: #e0e0e0;
+            }
+            QPushButton:hover   { background: #444; }
+            QPushButton:pressed { background: #555; }
+            QPushButton#btn_start {
+                background: #2E7D32; color: white;
+                font-weight: bold; border: none;
+            }
+            QPushButton#btn_start:hover   { background: #388E3C; }
+            QPushButton#btn_start:disabled { background: #444; color: #777; }
+            QPushButton#btn_stop {
+                background: #C62828; color: white;
+                font-weight: bold; border: none;
+            }
+            QPushButton#btn_stop:hover    { background: #D32F2F; }
+            QPushButton#btn_stop:disabled { background: #444; color: #777; border: none; }
+            QPushButton#btn_verify {
+                background: #0D47A1; color: white;
+                font-weight: bold; border: none;
+            }
+            QPushButton#btn_verify:hover   { background: #1565C0; }
+            QPushButton#btn_verify:disabled { background: #444; color: #777; border: none; }
+            QPushButton#btn_pipeline {
+                background: #4A148C; color: white;
+                font-weight: bold; border: none;
+            }
+            QPushButton#btn_pipeline:hover   { background: #6A1B9A; }
+            QPushButton#btn_pipeline:disabled { background: #444; color: #777; border: none; }
+            QPushButton#btn_retry {
+                background: #BF360C; color: white;
+                font-weight: bold; border: none;
+            }
+            QPushButton#btn_retry:hover   { background: #E65100; }
+            QPushButton#btn_retry:disabled { background: #444; color: #777; border: none; }
+            QTableWidget {
+                background: #252526; gridline-color: #333;
+                selection-background-color: #264f78;
+                selection-color: #fff; color: #e0e0e0;
+            }
+            QTableWidget QTableCornerButton::section { background: #333; }
+            QHeaderView::section {
+                background: #2d2d2d; font-weight: bold; color: #ccc;
+                padding: 5px; border: none;
+                border-right: 1px solid #444;
+            }
+            QListWidget {
+                background: #252526; color: #e0e0e0; border: 1px solid #444;
+            }
+            QListWidget::item         { padding: 5px 4px; }
+            QListWidget::item:selected { background: #264f78; color: #fff; }
+            QLineEdit, QTextEdit, QSpinBox, QComboBox {
+                background: #2d2d2d; color: #e0e0e0;
+                border: 1px solid #555; border-radius: 3px; padding: 3px;
+            }
+            QCheckBox, QRadioButton { color: #e0e0e0; }
+            QTabWidget::pane { border: 1px solid #444; }
+            QTabBar::tab {
+                background: #2d2d2d; color: #ccc;
+                padding: 8px 16px; border: 1px solid #444;
+            }
+            QTabBar::tab:selected { background: #1e1e1e; color: #fff; }
+            QScrollArea { border: none; }
+            QProgressBar {
+                background: #333; border: 1px solid #555;
+                text-align: center; color: #e0e0e0;
+            }
+            QProgressBar::chunk { background: #0D47A1; }
+            QStatusBar { background: #252526; color: #999; }
+            QMenuBar { background: #2d2d2d; color: #e0e0e0; }
+            QMenuBar::item:selected { background: #3d3d3d; }
+            QMenu { background: #2d2d2d; color: #e0e0e0; border: 1px solid #555; }
+            QMenu::item:selected { background: #3d3d3d; }
+        """)
+
+    def _toggle_dark_mode(self, checked: bool):
+        self._settings["dark_mode"] = checked
+        self._save_settings()
+        self._apply_style()
+
+    # ── Settings dialog ──────────────────────────────────────────────────────
+
+    def _show_settings_dialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Settings")
+        dlg.setMinimumWidth(420)
+        layout = QFormLayout(dlg)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Output folder
+        out_row = QHBoxLayout()
+        out_edit = QLineEdit(self._settings.get("output_dir", str(get_output_dir())))
+        out_browse = QPushButton("Browse…")
+        out_browse.clicked.connect(lambda: (
+            p := QFileDialog.getExistingDirectory(dlg, "Output Folder"),
+            out_edit.setText(p) if p else None,
+        ))
+        out_row.addWidget(out_edit, stretch=1)
+        out_row.addWidget(out_browse)
+        layout.addRow("Output Folder:", out_row)
+
+        # Search delay
+        delay_spin = QSpinBox()
+        delay_spin.setRange(1, 10)
+        delay_spin.setValue(self._settings.get("search_delay", 2))
+        delay_spin.setSuffix(" s")
+        layout.addRow("Search Delay:", delay_spin)
+
+        # Default CRM format
+        fmt_combo = QComboBox()
+        fmt_combo.addItems(list(_CRM_PRESETS.keys()))
+        cur = self._settings.get("default_format", "HubSpot")
+        if cur in _CRM_PRESETS:
+            fmt_combo.setCurrentText(cur)
+        layout.addRow("Default CRM Format:", fmt_combo)
+
+        # Dark mode
+        dark_cb = QCheckBox()
+        dark_cb.setChecked(self._settings.get("dark_mode", False))
+        layout.addRow("Dark Mode:", dark_cb)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+
+        if dlg.exec() == QDialog.Accepted:
+            self._settings["output_dir"]     = out_edit.text().strip()
+            self._settings["search_delay"]   = delay_spin.value()
+            self._settings["default_format"] = fmt_combo.currentText()
+            self._settings["dark_mode"]      = dark_cb.isChecked()
+            self._act_dark.setChecked(dark_cb.isChecked())
+            self._save_settings()
+            self._apply_style()
+
+    # ── Keyboard shortcuts ───────────────────────────────────────────────────
+
+    def _register_shortcuts(self):
+        QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._shortcut_export)
+        QShortcut(QKeySequence("Ctrl+R"), self).activated.connect(self._shortcut_run)
+        QShortcut(QKeySequence("Ctrl+Return"), self).activated.connect(self._add_company)
+
+    def _shortcut_export(self):
+        tab = self._tabs.currentIndex()
+        if tab == 0:
+            self._export_csv()
+        elif tab == 1:
+            self._email_export()
+        elif tab == 2:
+            self._crm_export()
+
+    def _shortcut_run(self):
+        tab = self._tabs.currentIndex()
+        if tab == 0:
+            self._start_search()
+        elif tab == 1:
+            self._email_start()
+
+    # ── Queue management ─────────────────────────────────────────────────────
 
     def _add_company(self):
         name = self._input.text().strip()
@@ -626,8 +1019,33 @@ class MainWindow(QMainWindow):
         self._enqueue(name)
         self._input.clear()
 
+    def _paste_companies(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Paste Company Names")
+        dlg.setMinimumSize(400, 300)
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(QLabel("Enter one company name per line:"))
+        text_edit = QTextEdit()
+        text_edit.setPlaceholderText("EOG Resources\nCoterra Energy\nChord Energy\n…")
+        layout.addWidget(text_edit)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        lines = text_edit.toPlainText().strip().splitlines()
+        added = 0
+        for line in lines:
+            name = line.strip().strip(',"\'')
+            if name and not self._in_queue(name):
+                self._enqueue(name)
+                added += 1
+        if added:
+            self.statusBar().showMessage(f"Added {added} companies to queue.")
+
     def _enqueue(self, name: str):
-        icon, color = _STATUS["pending"]
+        icon, color = _QUEUE_STATUS["pending"]
         item = QListWidgetItem(f"{icon}  {name}")
         item.setData(Qt.UserRole, name)
         item.setForeground(QColor(color))
@@ -642,8 +1060,7 @@ class MainWindow(QMainWindow):
 
     def _load_from_file(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Companies", "",
-            "Text/CSV Files (*.txt *.csv);;All Files (*)"
+            self, "Load Companies", "", "Text/CSV Files (*.txt *.csv);;All Files (*)"
         )
         if not path:
             return
@@ -655,7 +1072,7 @@ class MainWindow(QMainWindow):
                     if name and not self._in_queue(name):
                         self._enqueue(name)
                         added += 1
-            self._status.setText(f"Loaded {added} companies from file.")
+            self.statusBar().showMessage(f"Loaded {added} companies from file.")
         except Exception as e:
             QMessageBox.warning(self, "Load Error", str(e))
 
@@ -663,19 +1080,62 @@ class MainWindow(QMainWindow):
         if self._worker and self._worker.isRunning():
             QMessageBox.warning(self, "Running", "Stop the search before clearing the queue.")
             return
-        to_remove = []
-        for i in range(self._queue.count()):
-            item = self._queue.item(i)
-            company = item.data(Qt.UserRole)
-            if self._company_status.get(company) == "pending":
-                to_remove.append(i)
+        to_remove = [
+            i for i in range(self._queue.count())
+            if self._company_status.get(self._queue.item(i).data(Qt.UserRole)) == "pending"
+        ]
         for i in reversed(to_remove):
             self._queue.takeItem(i)
 
-    # ── Search control ───────────────────────────────────────────────────
+    def _queue_context_menu(self, pos):
+        item = self._queue.itemAt(pos)
+        if not item:
+            return
+        company = item.data(Qt.UserRole)
+        status  = self._company_status.get(company, "")
+        menu    = QMenu(self)
+        if status == "running":
+            menu.addAction("Currently running — cannot remove").setEnabled(False)
+        else:
+            n = sum(1 for c in self._contacts if c.get("company", "") == company)
+            lbl = f"Remove '{company}'"
+            if n:
+                lbl += f" and {n} contact{'s' if n != 1 else ''}"
+            menu.addAction(lbl).triggered.connect(lambda: self._remove_company(company))
+        menu.exec(self._queue.viewport().mapToGlobal(pos))
+
+    def _remove_company(self, company: str):
+        # Remove from queue
+        for i in range(self._queue.count()):
+            if self._queue.item(i).data(Qt.UserRole) == company:
+                self._queue.takeItem(i)
+                break
+        self._company_status.pop(company, None)
+
+        # Remove from contacts list
+        removed = [c for c in self._contacts if c.get("company", "") == company]
+        self._contacts = [c for c in self._contacts if c.get("company", "") != company]
+
+        # Remove URLs from duplicate tracker
+        for c in removed:
+            self._seen_urls.discard(c.get("linkedin_url", ""))
+
+        # Remove rows from table
+        self._table.setSortingEnabled(False)
+        rows = [
+            row for row in range(self._table.rowCount())
+            if (self._table.item(row, FIELDS.index("company")) or QTableWidgetItem("")).text() == company
+        ]
+        for row in reversed(rows):
+            self._table.removeRow(row)
+        self._table.setSortingEnabled(True)
+
+        self._count_label.setText(f"{len(self._contacts)} contacts found")
+        self.statusBar().showMessage(f"Removed '{company}' and {len(removed)} contacts from session.")
+
+    # ── Search control ───────────────────────────────────────────────────────
 
     def _pipeline_start(self):
-        """Start the full pull → email → filter → export pipeline."""
         self._pipeline_mode = True
         self._btn_pipeline.setEnabled(False)
         self._start_search()
@@ -687,13 +1147,13 @@ class MainWindow(QMainWindow):
             if self._company_status.get(self._queue.item(i).data(Qt.UserRole)) == "pending"
         ]
         if not pending:
-            self._status.setText("No pending companies in queue.")
+            self.statusBar().showMessage("No pending companies in queue.")
             return
 
         self._btn_start.setEnabled(False)
         self._btn_stop.setEnabled(True)
         self._progress.setVisible(True)
-        self._progress.setRange(0, 0)  # Indeterminate spinner
+        self._progress.setRange(0, 0)
 
         self._worker = SearchWorker(pending, get_output_dir())
         self._worker.contact_found.connect(self._on_contact)
@@ -709,19 +1169,18 @@ class MainWindow(QMainWindow):
         if self._worker:
             self._worker.stop()
         self._btn_stop.setEnabled(False)
-        self._status.setText("Stopping after current query completes…")
+        self.statusBar().showMessage("Stopping after current query completes…")
 
-    # ── Verify employment ────────────────────────────────────────────────
+    # ── Verify employment ────────────────────────────────────────────────────
 
     def _toggle_verify(self):
         if self._verify_worker and self._verify_worker.isRunning():
             self._verify_worker.stop()
             self._btn_verify.setText("Verify Employment")
-            self._status.setText("Stopping verification...")
+            self.statusBar().showMessage("Stopping verification…")
             return
-
         if not self._contacts:
-            self._status.setText("No contacts to verify. Run a search first.")
+            self.statusBar().showMessage("No contacts to verify. Run a search first.")
             return
 
         self._btn_verify.setText("■  Stop Verify")
@@ -738,21 +1197,17 @@ class MainWindow(QMainWindow):
 
     @Slot(str, str)
     def _on_verify_contact(self, linkedin_url: str, emp_status: str):
-        # Find the contact in self._contacts and update emp_status
         for c in self._contacts:
             if c.get("linkedin_url", "") == linkedin_url:
                 c["emp_status"] = emp_status
                 break
-
-        # Find matching row in table and update the Emp. Status cell (index 6)
         emp_col = FIELDS.index("emp_status")
         url_col = FIELDS.index("linkedin_url")
         self._table.setSortingEnabled(False)
         for row in range(self._table.rowCount()):
-            url_item = self._table.item(row, url_col)
-            if url_item and url_item.text() == linkedin_url:
+            if (self._table.item(row, url_col) or QTableWidgetItem("")).text() == linkedin_url:
                 status_item = QTableWidgetItem(emp_status)
-                color = _EMP_STATUS_COLORS.get(emp_status)
+                color = _EMP_COLORS.get(emp_status)
                 if color:
                     status_item.setForeground(QColor(color))
                 self._table.setItem(row, emp_col, status_item)
@@ -770,21 +1225,35 @@ class MainWindow(QMainWindow):
         current = sum(1 for c in self._contacts if c.get("emp_status") == "current")
         stale   = sum(1 for c in self._contacts if c.get("emp_status") == "stale")
         unknown = sum(1 for c in self._contacts if c.get("emp_status") == "unknown")
-        self._status.setText(
-            f"Verification done: {current} current, {stale} stale, {unknown} unknown."
-        )
+        msg = f"Verification done — {current} current, {stale} stale, {unknown} unknown."
+        self._puller_status.setText(msg)
+        self.statusBar().showMessage(msg)
 
-    # ── Worker signal handlers ───────────────────────────────────────────
+    # ── Worker signal handlers ───────────────────────────────────────────────
 
     @Slot(dict)
     def _on_contact(self, contact: dict):
+        # Duplicate detection
+        url = contact.get("linkedin_url", "")
+        if url and url in self._seen_urls:
+            self._dup_label.setText(
+                f"({sum(1 for _ in [url]) + getattr(self, '_dup_count', 0)} duplicates skipped)"
+            )
+            self._dup_count = getattr(self, "_dup_count", 0) + 1
+            self._dup_label.setText(f"({self._dup_count} duplicate{'s' if self._dup_count != 1 else ''} skipped)")
+            return
+        if url:
+            self._seen_urls.add(url)
+
+        # Auto-fill basin if blank
+        if not contact.get("basin"):
+            contact["basin"] = get_basin(contact.get("location", ""))
+
         self._contacts.append(contact)
 
-        # Temporarily disable sorting so row insertions are stable
         self._table.setSortingEnabled(False)
         row = self._table.rowCount()
         self._table.insertRow(row)
-
         for col, key in enumerate(FIELDS):
             val  = str(contact.get(key, ""))
             item = QTableWidgetItem(val)
@@ -793,16 +1262,13 @@ class MainWindow(QMainWindow):
                 item.setForeground(QColor("#1565C0"))
                 item.setToolTip("Double-click to open in browser  |  Right-click for options")
             self._table.setItem(row, col, item)
-
         self._table.setSortingEnabled(True)
         self._count_label.setText(f"{len(self._contacts)} contacts found")
-
-        # Auto-save immediately
         append_contact(contact, contact.get("company", "unknown"))
 
     @Slot(str)
     def _on_started(self, company: str):
-        self._set_status(company, "running")
+        self._set_queue_status(company, "running")
 
     @Slot(str, int, int)
     def _on_progress(self, company: str, current: int, total: int):
@@ -811,35 +1277,33 @@ class MainWindow(QMainWindow):
 
     @Slot(str, int)
     def _on_finished(self, company: str, count: int):
-        self._set_status(company, "done", suffix=f" ({count})")
+        self._set_queue_status(company, "done", suffix=f" ({count})")
 
     @Slot(str)
     def _on_failed(self, company: str):
-        self._set_status(company, "failed", suffix=" (0 — logged)")
+        self._set_queue_status(company, "failed", suffix=" (0 — logged)")
 
     @Slot(str)
     def _on_status(self, msg: str):
-        self._status.setText(msg)
+        self._puller_status.setText(msg)
+        self.statusBar().showMessage(msg)
 
     @Slot()
     def _on_all_done(self):
         self._btn_start.setEnabled(True)
         self._btn_stop.setEnabled(False)
         self._progress.setVisible(False)
-        out = get_output_dir()
-        self._status.setText(
-            f"Done. {len(self._contacts)} contacts found. Auto-saved to {out}"
-        )
+        msg = f"Done — {len(self._contacts)} contacts found. Auto-saved to {get_output_dir()}"
+        self._puller_status.setText(msg)
+        self.statusBar().showMessage(msg)
         if self._pipeline_mode and self._contacts:
-            self._status.setText(
-                f"{len(self._contacts)} contacts pulled. Starting email pipeline..."
-            )
-            self._tabs.setCurrentIndex(1)      # switch to Email Enricher tab
+            self.statusBar().showMessage(f"{len(self._contacts)} contacts pulled. Starting email pipeline…")
+            self._tabs.setCurrentIndex(1)
             self._email_load_from_puller()
             self._email_start()
 
-    def _set_status(self, company: str, status: str, suffix: str = ""):
-        icon, color = _STATUS[status]
+    def _set_queue_status(self, company: str, status: str, suffix: str = ""):
+        icon, color = _QUEUE_STATUS[status]
         for i in range(self._queue.count()):
             item = self._queue.item(i)
             if item.data(Qt.UserRole) == company:
@@ -848,7 +1312,7 @@ class MainWindow(QMainWindow):
                 self._company_status[company] = status
                 return
 
-    # ── Table interactions ───────────────────────────────────────────────
+    # ── Table interactions ───────────────────────────────────────────────────
 
     @Slot(int, int)
     def _cell_double_clicked(self, row: int, col: int):
@@ -861,10 +1325,8 @@ class MainWindow(QMainWindow):
         row = self._table.rowAt(pos.y())
         if row < 0:
             return
-
-        url_item  = self._table.item(row, FIELDS.index("linkedin_url"))
-        menu      = QMenu(self)
-
+        url_item = self._table.item(row, FIELDS.index("linkedin_url"))
+        menu = QMenu(self)
         if url_item and url_item.text():
             url = url_item.text()
             menu.addAction("Open LinkedIn in Browser").triggered.connect(
@@ -874,27 +1336,326 @@ class MainWindow(QMainWindow):
                 lambda: QApplication.clipboard().setText(url)
             )
             menu.addSeparator()
-
         menu.addAction("Copy Row as TSV").triggered.connect(lambda: self._copy_row(row))
+        company_item = self._table.item(row, FIELDS.index("company"))
+        if company_item and company_item.text():
+            co = company_item.text()
+            menu.addSeparator()
+            menu.addAction(f"Remove all '{co}' contacts").triggered.connect(
+                lambda: self._remove_company(co)
+            )
         menu.exec(self._table.viewport().mapToGlobal(pos))
 
     def _copy_row(self, row: int):
-        values = [
-            (self._table.item(row, c) or QTableWidgetItem("")).text()
-            for c in range(len(FIELDS))
-        ]
+        values = [(self._table.item(row, c) or QTableWidgetItem("")).text()
+                  for c in range(len(FIELDS))]
         QApplication.clipboard().setText("\t".join(values))
-
-    # ── Export ───────────────────────────────────────────────────────────
 
     def _export_csv(self):
         if not self._contacts:
-            self._status.setText("No contacts to export yet.")
+            self.statusBar().showMessage("No contacts to export yet.")
             return
         default = str(get_output_dir() / "contacts_export.csv")
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export CSV", default, "CSV Files (*.csv)"
-        )
+        path, _ = QFileDialog.getSaveFileName(self, "Export CSV", default, "CSV Files (*.csv)")
         if path:
             export_contacts(self._contacts, path)
-            self._status.setText(f"Exported {len(self._contacts)} contacts to {path}")
+            self.statusBar().showMessage(f"Exported {len(self._contacts)} contacts to {path}")
+
+    # ── Email tab: load contacts ─────────────────────────────────────────────
+
+    def _email_load_from_puller(self):
+        if not self._contacts:
+            self._email_status.setText("No contacts in Contact Puller yet.")
+            return
+        self._email_contacts = [dict(c) for c in self._contacts]
+        self._populate_email_table(self._email_contacts)
+        self._email_status.setText(f"{len(self._email_contacts)} contacts loaded from Puller.")
+
+    def _email_load_from_csv(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Contacts CSV", str(get_output_dir()), "CSV Files (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            with open(path, encoding="utf-8") as f:
+                contacts = [{k.lower().replace(" ", "_"): v for k, v in row.items()}
+                            for row in csv.DictReader(f)]
+            self._email_contacts = contacts
+            self._populate_email_table(contacts)
+            self._email_status.setText(f"{len(contacts)} contacts loaded from {Path(path).name}")
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", str(e))
+
+    def _populate_email_table(self, contacts: list[dict]):
+        self._email_table.setSortingEnabled(False)
+        self._email_table.setRowCount(0)
+        self._email_company_list.clear()
+        self._email_company_progress.clear()
+
+        companies_seen: set[str] = set()
+        for c in contacts:
+            row = self._email_table.rowCount()
+            self._email_table.insertRow(row)
+            for col, key in enumerate(_EMAIL_FIELDS):
+                val = str(c.get(key, ""))
+                if key == "confidence" and not val:
+                    val = _confidence(c.get("email_status", ""))
+                item = QTableWidgetItem(val)
+                if key == "linkedin_url":
+                    item.setForeground(QColor("#1565C0"))
+                self._email_table.setItem(row, col, item)
+
+            company = c.get("company", "")
+            if company and company not in companies_seen:
+                companies_seen.add(company)
+                n = sum(1 for x in contacts if x.get("company") == company)
+                li = QListWidgetItem(f"⏳  {company}  (0/{n})")
+                li.setData(Qt.UserRole, company)
+                self._email_company_list.addItem(li)
+                self._email_company_progress[company] = (0, n)
+
+        self._email_table.setSortingEnabled(True)
+        self._email_count_label.setText(f"{len(contacts)} contacts loaded")
+        self._email_btn_retry.setEnabled(False)
+
+    # ── Email tab: enrichment ────────────────────────────────────────────────
+
+    def _email_start(self):
+        if not self._email_contacts:
+            self._email_status.setText("Load contacts first.")
+            return
+
+        # Skip already-enriched?
+        already = [c for c in self._email_contacts if c.get("email", "").strip()]
+        to_enrich = self._email_contacts
+        if already:
+            reply = QMessageBox.question(
+                self, "Skip Enriched Contacts",
+                f"{len(already)} contact(s) already have an email address.\n\n"
+                f"Skip them and only process the {len(self._email_contacts) - len(already)} remaining?",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            )
+            if reply == QMessageBox.Cancel:
+                return
+            if reply == QMessageBox.Yes:
+                to_enrich = [c for c in self._email_contacts if not c.get("email", "").strip()]
+
+        if not to_enrich:
+            self._email_status.setText("All contacts already have emails.")
+            return
+
+        self._email_enriched = []
+        self._email_btn_start.setEnabled(False)
+        self._email_btn_stop.setEnabled(True)
+        self._email_btn_retry.setEnabled(False)
+        self._email_progress.setVisible(True)
+        self._email_progress.setRange(0, len(to_enrich))
+        self._email_progress.setValue(0)
+
+        self._email_worker = EmailWorker(to_enrich)
+        self._email_worker.contact_enriched.connect(self._on_email_enriched)
+        self._email_worker.company_started.connect(self._on_email_company_started)
+        self._email_worker.company_status.connect(self._on_email_company_status)
+        self._email_worker.company_done.connect(self._on_email_company_done)
+        self._email_worker.status_update.connect(self._on_email_status)
+        self._email_worker.port25_blocked.connect(self._on_port25_blocked)
+        self._email_worker.all_done.connect(self._on_email_all_done)
+        self._email_worker.start()
+
+    def _email_stop(self):
+        if self._email_worker:
+            self._email_worker.stop()
+        self._email_btn_stop.setEnabled(False)
+        self._email_status.setText("Stopping after current contact…")
+
+    def _email_retry_failed(self):
+        failed = [c for c in self._email_enriched if c.get("email_status", "") in DROP_STATUSES]
+        if not failed:
+            self._email_status.setText("No failed contacts to retry.")
+            return
+        reply = QMessageBox.question(
+            self, "Retry Failed",
+            f"Re-run enrichment on {len(failed)} failed contact(s)?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        self._email_contacts = failed
+        self._populate_email_table(failed)
+        self._email_start()
+
+    @Slot(dict)
+    def _on_email_enriched(self, contact: dict):
+        # Add confidence
+        status = contact.get("email_status", "")
+        contact["confidence"] = _confidence(status)
+
+        self._email_enriched.append(contact)
+        self._email_progress.setValue(len(self._email_enriched))
+
+        url_col = _EMAIL_FIELDS.index("linkedin_url")
+        url = contact.get("linkedin_url", "")
+        for row in range(self._email_table.rowCount()):
+            url_item = self._email_table.item(row, url_col)
+            if url_item and url_item.text() == url:
+                self._email_table.setSortingEnabled(False)
+                for col, key in enumerate(_EMAIL_FIELDS):
+                    val = str(contact.get(key, "") or "")
+                    if key == "confidence" and not val:
+                        val = _confidence(contact.get("email_status", ""))
+                    item = QTableWidgetItem(val)
+                    if key == "email_status":
+                        color = _EMAIL_COLORS.get(status)
+                        if color:
+                            item.setForeground(QColor(color))
+                    elif key == "confidence":
+                        item.setForeground(QColor(
+                            "#2E7D32" if val == "High" else
+                            "#E65100" if val == "Medium" else
+                            "#888" if val == "Low" else "#bbb"
+                        ))
+                    elif key == "linkedin_url":
+                        item.setForeground(QColor("#1565C0"))
+                    self._email_table.setItem(row, col, item)
+                self._email_table.setSortingEnabled(True)
+
+                # Update per-company progress
+                company = contact.get("company", "")
+                if company in self._email_company_progress:
+                    done, total = self._email_company_progress[company]
+                    done += 1
+                    self._email_company_progress[company] = (done, total)
+                    self._set_email_company_icon(company, "🔵", f" ({done}/{total})")
+                break
+
+    @Slot(str, int)
+    def _on_email_company_started(self, company: str, count: int):
+        self._email_status.setText(f"Processing {company} ({count} contacts)…")
+        self._set_email_company_icon(company, "🔵", f" (0/{count})")
+        self._email_company_progress[company] = (0, count)
+
+    @Slot(str, str)
+    def _on_email_company_status(self, company: str, msg: str):
+        self._email_status.setText(f"[{company}] {msg}")
+        self.statusBar().showMessage(f"[{company}] {msg}")
+
+    @Slot(str, int, int)
+    def _on_email_company_done(self, company: str, verified: int, total: int):
+        icon = "✅" if verified > 0 else "⚠️"
+        self._set_email_company_icon(company, icon, f" ({verified}/{total} verified)")
+
+    @Slot(str)
+    def _on_email_status(self, msg: str):
+        self._email_status.setText(msg)
+        self.statusBar().showMessage(msg)
+
+    @Slot()
+    def _on_port25_blocked(self):
+        QMessageBox.warning(
+            self, "Port 25 Blocked",
+            "Outbound port 25 appears to be blocked by your ISP or network.\n\n"
+            "SMTP verification will return 'unknown' for all addresses.\n\n"
+            "Options:\n"
+            "  • Use a VPN with a clean IP\n"
+            "  • Run on a cloud VM (AWS/GCP)\n\n"
+            "The tool will continue generating best-guess emails."
+        )
+
+    @Slot()
+    def _on_email_all_done(self):
+        self._email_btn_start.setEnabled(True)
+        self._email_btn_stop.setEnabled(False)
+        self._email_progress.setVisible(False)
+        self._email_btn_retry.setEnabled(
+            any(c.get("email_status", "") in DROP_STATUSES for c in self._email_enriched)
+        )
+        verified  = sum(1 for c in self._email_enriched if c.get("email_status") == "verified")
+        confirmed = sum(1 for c in self._email_enriched if c.get("email_status") == "catch-all-confirmed")
+        risky     = sum(1 for c in self._email_enriched if c.get("email_status") == "catch-all-risky")
+        other     = len(self._email_enriched) - verified - confirmed - risky
+        msg = (f"Done — {verified} verified | {confirmed} catch-all confirmed | "
+               f"{risky} risky | {other} unresolved")
+        self._email_status.setText(msg)
+        self.statusBar().showMessage(msg)
+        if self._pipeline_mode:
+            self._pipeline_mode = False
+            self._btn_pipeline.setEnabled(True)
+            self._pipeline_finish()
+
+    def _pipeline_finish(self):
+        viable  = [c for c in self._email_enriched
+                   if c.get("email") and c.get("email_status", "") not in DROP_STATUSES]
+        dropped = len(self._email_enriched) - len(viable)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = get_output_dir() / f"pipeline_{ts}.csv"
+        fields = ["first_name", "last_name", "title", "company", "email",
+                  "email_status", "confidence", "email_source", "location",
+                  "basin", "linkedin_url", "date_pulled"]
+        try:
+            with open(out_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows([{k: c.get(k, "") for k in fields} for c in viable])
+            msg = (f"Pipeline complete — {len(viable)} viable contacts saved to "
+                   f"{out_path.name} | {dropped} dropped")
+            self._email_status.setText(msg)
+            self.statusBar().showMessage(msg)
+        except Exception as e:
+            self._email_status.setText(f"Pipeline complete but export failed: {e}")
+
+    def _set_email_company_icon(self, company: str, icon: str, suffix: str = ""):
+        for i in range(self._email_company_list.count()):
+            item = self._email_company_list.item(i)
+            if item.data(Qt.UserRole) == company:
+                item.setText(f"{icon}  {company}{suffix}")
+                return
+
+    def _email_context_menu(self, pos):
+        row = self._email_table.rowAt(pos.y())
+        if row < 0:
+            return
+        email_col = _EMAIL_FIELDS.index("email")
+        url_col   = _EMAIL_FIELDS.index("linkedin_url")
+        email_item = self._email_table.item(row, email_col)
+        url_item   = self._email_table.item(row, url_col)
+        menu = QMenu(self)
+        if email_item and email_item.text():
+            menu.addAction("Copy Email").triggered.connect(
+                lambda: QApplication.clipboard().setText(email_item.text())
+            )
+        if url_item and url_item.text():
+            menu.addAction("Open LinkedIn").triggered.connect(
+                lambda: QDesktopServices.openUrl(QUrl(url_item.text()))
+            )
+        menu.addSeparator()
+        menu.addAction("Copy Row").triggered.connect(lambda: self._email_copy_row(row))
+        menu.exec(self._email_table.viewport().mapToGlobal(pos))
+
+    def _email_copy_row(self, row: int):
+        values = [(self._email_table.item(row, c) or QTableWidgetItem("")).text()
+                  for c in range(self._email_table.columnCount())]
+        QApplication.clipboard().setText("\t".join(values))
+
+    def _email_export(self):
+        data = self._email_enriched if self._email_enriched else self._email_contacts
+        if not data:
+            self._email_status.setText("No contacts to export.")
+            return
+        default = str(get_output_dir() / "contacts_enriched.csv")
+        path, _ = QFileDialog.getSaveFileName(self, "Export Enriched CSV", default, "CSV Files (*.csv)")
+        if not path:
+            return
+        fields = ["first_name", "last_name", "title", "company", "email",
+                  "email_status", "confidence", "email_source", "location",
+                  "basin", "linkedin_url", "source", "date_pulled"]
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows([{k: c.get(k, "") for k in fields} for c in data])
+            msg = f"Exported {len(data)} contacts to {Path(path).name}"
+            self._email_status.setText(msg)
+            self.statusBar().showMessage(msg)
+        except Exception as e:
+            QMessageBox.warning(self, "Export Error", str(e))
