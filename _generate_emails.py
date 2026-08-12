@@ -85,7 +85,8 @@ for ci, company in enumerate(by_company.keys()):
         last  = c.get("last_name") or ""
         if not first or not last:
             name  = c.get("name", "")
-            parts = name.strip().split()
+            clean = name.split(",")[0].strip()
+            parts = clean.split()
             first = parts[0] if parts else ""
             last  = parts[-1] if len(parts) > 1 else ""
         name = c.get("name", f"{first} {last}".strip())

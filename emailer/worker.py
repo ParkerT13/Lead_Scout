@@ -122,7 +122,8 @@ class EmailWorker(QThread):
             last  = contact.get("last_name") or ""
             if not first or not last:
                 name  = contact.get("name", "")
-                parts = name.strip().split()
+                clean = name.split(",")[0].strip()  # drop ", PMP" / ", PE" etc.
+                parts = clean.split()
                 first = parts[0] if parts else ""
                 last  = parts[-1] if len(parts) > 1 else ""
             name = contact.get("name", f"{first} {last}".strip())
