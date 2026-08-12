@@ -1,6 +1,8 @@
 import csv
 import json
 import logging
+import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -18,6 +20,9 @@ from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequen
 
 from scraper.worker import SearchWorker
 from emailer.worker import EmailWorker, DROP_STATUSES
+from emailer.generator import generate_candidates
+from emailer.domain_cache import all_entries as cache_all, get as cache_get, put as cache_put
+from emailer.smtp_verifier import port25_available
 from verifier.worker import VerifyWorker
 from output.csv_writer import append_contact, export_contacts, get_output_dir
 from output.basin_mapper import get_basin
@@ -27,9 +32,9 @@ logger = logging.getLogger(__name__)
 # ── Column definitions ───────────────────────────────────────────────────────
 
 COLUMNS = ["First Name", "Last Name", "Title", "Company", "Location",
-           "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date"]
+           "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date", "Priority"]
 FIELDS  = ["first_name", "last_name", "title", "company", "location",
-           "basin", "linkedin_url", "emp_status", "source", "date_pulled"]
+           "basin", "linkedin_url", "emp_status", "source", "date_pulled", "priority"]
 
 _EMAIL_COLS   = ["First Name", "Last Name", "Title", "Company",
                  "Email", "Status", "Confidence", "Source", "LinkedIn URL"]
@@ -118,22 +123,55 @@ _QUEUE_STATUS = {
 }
 
 _SETTINGS_FILE = get_output_dir() / "settings.json"
+_SESSION_FILE  = get_output_dir() / "session.json"
+
 _DEFAULT_SETTINGS = {
-    "dark_mode":      False,
-    "output_dir":     str(get_output_dir()),
-    "search_delay":   2,
-    "default_format": "HubSpot",
+    "dark_mode":        True,
+    "output_dir":       str(get_output_dir()),
+    "search_delay":     2,
+    "default_format":   "HubSpot",
+    "title_include":    "",
+    "title_exclude":    "",
 }
+
+# Seniority tiers for contact priority scoring
+_SENIORITY_TIERS = [
+    (1, ["chief ", "ceo", "cto", "coo", "cfo", "c-suite", "president", "founder", "owner", "managing partner", "managing director"]),
+    (2, ["executive vice president", "evp", "senior vice president", "svp", "vice president", " vp "]),
+    (3, ["director", "head of", "principal"]),
+    (4, ["manager", "team lead", "lead ", "senior ", "sr. ", "sr "]),
+    (5, ["engineer", "analyst", "associate", "specialist", "coordinator", "consultant", "geologist", "geophysicist"]),
+]
 
 
 def _confidence(status: str) -> str:
     if status in ("verified",):
         return "High"
-    if status in ("catch-all-confirmed", "pattern-confirmed", "emailformat"):
+    if status in ("catch-all-confirmed", "pattern-confirmed", "emailformat", "hubspot"):
         return "Medium"
     if status in ("catch-all-risky", "best-guess", "unknown", "pattern-ddg"):
         return "Low"
     return ""
+
+
+def _seniority(title: str) -> int:
+    """Return seniority rank 1 (C-suite) to 5 (IC). 9 = unranked."""
+    t = " " + title.lower() + " "
+    for rank, keywords in _SENIORITY_TIERS:
+        if any(k in t for k in keywords):
+            return rank
+    return 9
+
+
+def _priority_label(title: str) -> str:
+    r = _seniority(title)
+    return {
+        1: "1 - C-Suite / Exec",
+        2: "2 - VP",
+        3: "3 - Director",
+        4: "4 - Manager / Lead",
+        5: "5 - Individual",
+    }.get(r, "")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -153,6 +191,7 @@ class MainWindow(QMainWindow):
         self._worker:         SearchWorker | None = None
         self._verify_worker:  VerifyWorker | None = None
         self._pipeline_mode:  bool = False
+        self._port25_ok:      bool = True               # shown in banner if blocked
 
         self._email_contacts: list[dict] = []
         self._email_worker:   EmailWorker | None = None
@@ -166,6 +205,7 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._apply_style()
         self._register_shortcuts()
+        self._session_offer_restore()
 
     # ── Settings ────────────────────────────────────────────────────────────
 
@@ -215,17 +255,31 @@ class MainWindow(QMainWindow):
         file_menu.addAction(act_settings)
 
         self._act_dark = QAction("Dark Mode", self, checkable=True)
-        self._act_dark.setChecked(self._settings.get("dark_mode", False))
+        self._act_dark.setChecked(self._settings.get("dark_mode", True))
         self._act_dark.triggered.connect(self._toggle_dark_mode)
         file_menu.addAction(self._act_dark)
 
         file_menu.addSeparator()
+        act_import = QAction("Import Previous Session…", self)
+        act_import.triggered.connect(self._session_import)
+        file_menu.addAction(act_import)
+
         act_export = QAction("Export CSV\tCtrl+S", self)
         act_export.triggered.connect(self._export_csv)
         file_menu.addAction(act_export)
 
+        file_menu.addSeparator()
+        act_folder = QAction("Open Output Folder", self)
+        act_folder.triggered.connect(self._open_output_folder)
+        file_menu.addAction(act_folder)
+
         # Tools menu
         tools_menu = menu_bar.addMenu("Tools")
+        act_cache = QAction("Domain Cache Editor…", self)
+        act_cache.triggered.connect(self._show_domain_cache_editor)
+        tools_menu.addAction(act_cache)
+
+        tools_menu.addSeparator()
         act_check = QAction("Check Domains (CLI)…", self)
         act_check.triggered.connect(lambda: QMessageBox.information(
             self, "Check Domains",
@@ -242,9 +296,46 @@ class MainWindow(QMainWindow):
         root.setSpacing(8)
         root.setContentsMargins(10, 10, 10, 10)
         root.addLayout(self._build_toolbar())
+        root.addLayout(self._build_filter_row())
         root.addWidget(self._build_splitter(), stretch=1)
         root.addLayout(self._build_bottom_bar())
         return tab
+
+    def _build_filter_row(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(6)
+
+        row.addWidget(QLabel("Title includes:"))
+        self._filter_include = QLineEdit()
+        self._filter_include.setPlaceholderText("e.g. VP, Director, Manager  (comma-separated)")
+        self._filter_include.setMaximumHeight(30)
+        self._filter_include.setText(self._settings.get("title_include", ""))
+        self._filter_include.textChanged.connect(self._save_filter_settings)
+        row.addWidget(self._filter_include, stretch=2)
+
+        row.addWidget(QLabel("excludes:"))
+        self._filter_exclude = QLineEdit()
+        self._filter_exclude.setPlaceholderText("e.g. intern, student")
+        self._filter_exclude.setMaximumHeight(30)
+        self._filter_exclude.setText(self._settings.get("title_exclude", ""))
+        self._filter_exclude.textChanged.connect(self._save_filter_settings)
+        row.addWidget(self._filter_exclude, stretch=1)
+
+        lbl = QLabel("(leave blank for all titles — filters apply to new contacts only)")
+        lbl.setStyleSheet("color: #888; font-size: 11px;")
+        row.addWidget(lbl)
+
+        btn_folder = QPushButton("Open Output Folder")
+        btn_folder.setMaximumHeight(30)
+        btn_folder.clicked.connect(self._open_output_folder)
+        row.addWidget(btn_folder)
+
+        return row
+
+    def _save_filter_settings(self):
+        self._settings["title_include"] = self._filter_include.text().strip()
+        self._settings["title_exclude"] = self._filter_exclude.text().strip()
+        self._save_settings()
 
     def _build_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
@@ -449,11 +540,47 @@ class MainWindow(QMainWindow):
         self._email_table.setSortingEnabled(True)
         self._email_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._email_table.customContextMenuRequested.connect(self._email_context_menu)
+        self._email_table.selectionModel().selectionChanged.connect(self._on_email_row_selected)
         right_layout.addWidget(self._email_table)
+
+        # Email preview panel
+        preview_box = QGroupBox("Email Candidates Preview")
+        preview_box.setFixedHeight(160)
+        preview_layout = QVBoxLayout(preview_box)
+        preview_layout.setSpacing(4)
+        preview_layout.setContentsMargins(8, 8, 8, 8)
+        self._email_preview_label = QLabel("Select a contact to see all email format candidates.")
+        self._email_preview_label.setStyleSheet("color: #888; font-size: 11px;")
+        self._email_preview_label.setWordWrap(True)
+        preview_layout.addWidget(self._email_preview_label)
+        self._email_preview_table = QTableWidget()
+        self._email_preview_table.setColumnCount(2)
+        self._email_preview_table.setHorizontalHeaderLabels(["Format", "Email Candidate"])
+        self._email_preview_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self._email_preview_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._email_preview_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._email_preview_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._email_preview_table.setMaximumHeight(120)
+        self._email_preview_table.setVisible(False)
+        preview_layout.addWidget(self._email_preview_table)
+        right_layout.addWidget(preview_box)
 
         splitter.addWidget(right_box)
         splitter.setSizes([265, 1085])
         root.addWidget(splitter, stretch=1)
+
+        # Port 25 warning banner (hidden until blocked)
+        self._port25_banner = QLabel(
+            "  WARNING: Outbound port 25 is blocked. SMTP verification will return 'unknown'. "
+            "Use a VPN or cloud server for full verification. Best-guess emails will still be generated."
+        )
+        self._port25_banner.setStyleSheet(
+            "background: #7F1D1D; color: #FCA5A5; padding: 6px 10px; "
+            "font-size: 11px; border-radius: 4px;"
+        )
+        self._port25_banner.setWordWrap(True)
+        self._port25_banner.setVisible(False)
+        root.addWidget(self._port25_banner)
 
         bottom = QHBoxLayout()
         self._email_progress = QProgressBar()
@@ -1236,14 +1363,27 @@ class MainWindow(QMainWindow):
         # Duplicate detection
         url = contact.get("linkedin_url", "")
         if url and url in self._seen_urls:
-            self._dup_label.setText(
-                f"({sum(1 for _ in [url]) + getattr(self, '_dup_count', 0)} duplicates skipped)"
-            )
             self._dup_count = getattr(self, "_dup_count", 0) + 1
             self._dup_label.setText(f"({self._dup_count} duplicate{'s' if self._dup_count != 1 else ''} skipped)")
             return
         if url:
             self._seen_urls.add(url)
+
+        # Title filter
+        title = contact.get("title", "").lower()
+        inc = self._filter_include.text().strip()
+        exc = self._filter_exclude.text().strip()
+        if inc:
+            terms = [t.strip().lower() for t in inc.split(",") if t.strip()]
+            if terms and not any(t in title for t in terms):
+                return
+        if exc:
+            terms = [t.strip().lower() for t in exc.split(",") if t.strip()]
+            if any(t in title for t in terms):
+                return
+
+        # Auto-fill priority from title
+        contact["priority"] = _priority_label(contact.get("title", ""))
 
         # Auto-fill basin if blank
         if not contact.get("basin"):
@@ -1552,15 +1692,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_port25_blocked(self):
-        QMessageBox.warning(
-            self, "Port 25 Blocked",
-            "Outbound port 25 appears to be blocked by your ISP or network.\n\n"
-            "SMTP verification will return 'unknown' for all addresses.\n\n"
-            "Options:\n"
-            "  • Use a VPN with a clean IP\n"
-            "  • Run on a cloud VM (AWS/GCP)\n\n"
-            "The tool will continue generating best-guess emails."
-        )
+        self._port25_ok = False
+        self._port25_banner.setVisible(True)
 
     @Slot()
     def _on_email_all_done(self):
@@ -1659,3 +1792,263 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
         except Exception as e:
             QMessageBox.warning(self, "Export Error", str(e))
+
+    # ── Email preview panel ──────────────────────────────────────────────────
+
+    def _on_email_row_selected(self):
+        rows = self._email_table.selectionModel().selectedRows()
+        if not rows:
+            self._email_preview_label.setText("Select a contact to see all email format candidates.")
+            self._email_preview_table.setVisible(False)
+            return
+        row = rows[0].row()
+        fn_col  = _EMAIL_FIELDS.index("first_name")
+        ln_col  = _EMAIL_FIELDS.index("last_name")
+        co_col  = _EMAIL_FIELDS.index("company")
+        em_col  = _EMAIL_FIELDS.index("email")
+        fn = (self._email_table.item(row, fn_col) or QTableWidgetItem("")).text()
+        ln = (self._email_table.item(row, ln_col) or QTableWidgetItem("")).text()
+        co = (self._email_table.item(row, co_col) or QTableWidgetItem("")).text()
+        known_email = (self._email_table.item(row, em_col) or QTableWidgetItem("")).text()
+
+        # Look up domain from cache
+        cached = cache_get(co) if co else None
+        domain = cached.get("domain", "") if cached else ""
+        pattern = cached.get("pattern") if cached else None
+
+        if not domain or not fn or not ln:
+            self._email_preview_label.setText(
+                f"{fn} {ln} @ {co}  —  domain not yet discovered."
+            )
+            self._email_preview_table.setVisible(False)
+            return
+
+        candidates = generate_candidates(fn, ln, domain, pattern=None)  # all 8 formats
+        self._email_preview_label.setText(
+            f"{fn} {ln}  |  {co}  |  Domain: {domain}  |  Known pattern: {pattern or 'unknown'}"
+        )
+
+        _FORMAT_NAMES = ["first.last", "flast", "firstlast", "f.last", "first.l", "first", "last.first", "lfirst"]
+        self._email_preview_table.setRowCount(len(candidates))
+        for i, cand in enumerate(candidates):
+            local = cand.split("@")[0]
+            fmt_name = _FORMAT_NAMES[i] if i < len(_FORMAT_NAMES) else ""
+            fmt_item = QTableWidgetItem(fmt_name)
+            em_item  = QTableWidgetItem(cand)
+            if cand == known_email:
+                em_item.setForeground(QColor("#4ADE80"))
+                fmt_item.setForeground(QColor("#4ADE80"))
+                em_item.setToolTip("Current result")
+                fmt_item.setToolTip("Current result")
+            self._email_preview_table.setItem(i, 0, fmt_item)
+            self._email_preview_table.setItem(i, 1, em_item)
+        self._email_preview_table.setVisible(True)
+
+    # ── Session persistence ──────────────────────────────────────────────────
+
+    def _session_save(self):
+        try:
+            data = {
+                "saved_at": datetime.now().isoformat(),
+                "contacts": self._contacts,
+                "enriched": self._email_enriched,
+                "queue":    [self._queue.item(i).data(Qt.UserRole)
+                             for i in range(self._queue.count())],
+                "company_status": self._company_status,
+            }
+            _SESSION_FILE.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+        except Exception as e:
+            logger.warning("Session save failed: %s", e)
+
+    def _session_offer_restore(self):
+        try:
+            if not _SESSION_FILE.exists():
+                return
+            data = json.loads(_SESSION_FILE.read_text(encoding="utf-8"))
+            contacts = data.get("contacts", [])
+            enriched = data.get("enriched", [])
+            if not contacts and not enriched:
+                return
+            saved_at = data.get("saved_at", "unknown")[:16].replace("T", " ")
+            reply = QMessageBox.question(
+                self, "Restore Previous Session",
+                f"A session saved {saved_at} was found with "
+                f"{len(contacts)} contacts and {len(enriched)} enriched contacts.\n\n"
+                "Restore it?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+            self._session_load_data(data)
+        except Exception as e:
+            logger.warning("Session restore failed: %s", e)
+
+    def _session_import(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import Session", str(get_output_dir()), "JSON Files (*.json);;CSV Files (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            if path.endswith(".json"):
+                data = json.loads(Path(path).read_text(encoding="utf-8"))
+                self._session_load_data(data)
+            else:
+                # CSV import — treat as contacts
+                with open(path, encoding="utf-8") as f:
+                    contacts = [{k.lower().replace(" ", "_"): v for k, v in r.items()}
+                                for r in csv.DictReader(f)]
+                self._session_load_data({"contacts": contacts, "enriched": [], "queue": [], "company_status": {}})
+        except Exception as e:
+            QMessageBox.warning(self, "Import Error", str(e))
+
+    def _session_load_data(self, data: dict):
+        contacts = data.get("contacts", [])
+        enriched = data.get("enriched", [])
+        queue    = data.get("queue", [])
+        statuses = data.get("company_status", {})
+
+        # Restore contacts table
+        for c in contacts:
+            if c.get("linkedin_url") and c["linkedin_url"] not in self._seen_urls:
+                if c.get("linkedin_url"):
+                    self._seen_urls.add(c["linkedin_url"])
+                if not c.get("priority"):
+                    c["priority"] = _priority_label(c.get("title", ""))
+                self._contacts.append(c)
+                self._table.setSortingEnabled(False)
+                row = self._table.rowCount()
+                self._table.insertRow(row)
+                for col, key in enumerate(FIELDS):
+                    val = str(c.get(key, ""))
+                    item = QTableWidgetItem(val)
+                    if key == "linkedin_url":
+                        item.setForeground(QColor("#1565C0"))
+                    self._table.setItem(row, col, item)
+                self._table.setSortingEnabled(True)
+
+        self._count_label.setText(f"{len(self._contacts)} contacts found")
+
+        # Restore queue
+        for co in queue:
+            if not self._in_queue(co):
+                status = statuses.get(co, "done")
+                icon, color = _QUEUE_STATUS.get(status, _QUEUE_STATUS["done"])
+                item = QListWidgetItem(f"{icon}  {co}")
+                item.setData(Qt.UserRole, co)
+                item.setForeground(QColor(color))
+                self._queue.addItem(item)
+                self._company_status[co] = status
+
+        # Restore enriched contacts
+        if enriched:
+            self._email_enriched = enriched
+            self._email_contacts = contacts if contacts else enriched
+            self._populate_email_table(self._email_contacts)
+
+        n = len(contacts)
+        e = len(enriched)
+        self.statusBar().showMessage(f"Session restored — {n} contacts, {e} enriched.")
+
+    def closeEvent(self, event):
+        if self._contacts or self._email_enriched:
+            self._session_save()
+        event.accept()
+
+    # ── Domain cache editor ──────────────────────────────────────────────────
+
+    def _show_domain_cache_editor(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Domain Cache Editor")
+        dlg.setMinimumSize(800, 500)
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+
+        info = QLabel(
+            "Edit domain and email pattern assignments. "
+            "Changes take effect immediately for future email generation runs."
+        )
+        info.setStyleSheet("color: #888; font-size: 11px;")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        table = QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["Company", "Domain", "Pattern", "Source"])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setAlternatingRowColors(True)
+
+        entries = cache_all()
+        table.setRowCount(len(entries))
+        for row, (company, info_dict) in enumerate(sorted(entries.items())):
+            table.setItem(row, 0, QTableWidgetItem(company))
+            table.setItem(row, 1, QTableWidgetItem(info_dict.get("domain", "")))
+            pattern_item = QTableWidgetItem(info_dict.get("pattern") or "")
+            table.setItem(row, 2, pattern_item)
+            src_item = QTableWidgetItem(info_dict.get("pattern_source", ""))
+            src_item.setFlags(src_item.flags() & ~Qt.ItemIsEditable)
+            table.setItem(row, 3, src_item)
+
+        # Only domain and pattern are editable
+        for row in range(table.rowCount()):
+            table.item(row, 0).setFlags(table.item(row, 0).flags() & ~Qt.ItemIsEditable)
+
+        layout.addWidget(table, stretch=1)
+
+        pattern_hint = QLabel(
+            "Valid patterns: first.last  |  flast  |  firstlast  |  f.last  |  first.l  |  first  |  last.first  |  lfirst"
+        )
+        pattern_hint.setStyleSheet("color: #888; font-size: 10px;")
+        layout.addWidget(pattern_hint)
+
+        btn_row = QHBoxLayout()
+        btn_delete = QPushButton("Delete Selected Row")
+        btn_delete.clicked.connect(lambda: table.removeRow(table.currentRow()))
+        btn_row.addWidget(btn_delete)
+        btn_row.addStretch()
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        btn_row.addWidget(buttons)
+        layout.addLayout(btn_row)
+
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        # Write back all rows
+        new_cache = {}
+        for row in range(table.rowCount()):
+            company  = (table.item(row, 0) or QTableWidgetItem("")).text().strip()
+            domain   = (table.item(row, 1) or QTableWidgetItem("")).text().strip()
+            pattern  = (table.item(row, 2) or QTableWidgetItem("")).text().strip() or None
+            src_item = table.item(row, 3)
+            source   = src_item.text().strip() if src_item else "manual"
+            if company and domain:
+                new_cache[company] = {
+                    "domain":         domain,
+                    "pattern":        pattern,
+                    "pattern_source": source if source else "manual",
+                }
+
+        from emailer.domain_cache import _CACHE_FILE
+        try:
+            _CACHE_FILE.write_text(json.dumps(new_cache, indent=2), encoding="utf-8")
+            self.statusBar().showMessage(f"Domain cache saved — {len(new_cache)} entries.")
+        except Exception as e:
+            QMessageBox.warning(self, "Save Error", str(e))
+
+    # ── Open output folder ───────────────────────────────────────────────────
+
+    def _open_output_folder(self):
+        folder = Path(self._settings.get("output_dir", str(get_output_dir())))
+        folder.mkdir(parents=True, exist_ok=True)
+        if os.name == "nt":
+            os.startfile(str(folder))
+        else:
+            subprocess.Popen(["xdg-open", str(folder)])
