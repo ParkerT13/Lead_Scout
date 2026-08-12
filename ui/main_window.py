@@ -1,5 +1,6 @@
 import logging
 import csv
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow):
         self._company_status: dict[str, str]   = {}
         self._worker:         SearchWorker | None = None
         self._verify_worker:  VerifyWorker | None = None
+        self._pipeline_mode:  bool = False
 
         self._build_ui()
         self._apply_style()
@@ -115,6 +117,16 @@ class MainWindow(QMainWindow):
         )
         self._btn_verify.clicked.connect(self._toggle_verify)
         row.addWidget(self._btn_verify)
+
+        self._btn_pipeline = QPushButton("Run Full Pipeline")
+        self._btn_pipeline.setObjectName("btn_pipeline")
+        self._btn_pipeline.setMinimumHeight(38)
+        self._btn_pipeline.setToolTip(
+            "Pull contacts, find email domains, probe format variations, generate and verify all emails.\n"
+            "Automatically removes bounced addresses and exports viable contacts."
+        )
+        self._btn_pipeline.clicked.connect(self._pipeline_start)
+        row.addWidget(self._btn_pipeline)
 
         btn_export = QPushButton("Export CSV")
         btn_export.setMinimumHeight(38)
@@ -445,9 +457,36 @@ class MainWindow(QMainWindow):
         self._email_status.setText(
             f"Done. {verified} verified | "
             f"{confirmed} catch-all (pattern confirmed) | "
-            f"{risky} catch-all (risky — do not send) | "
+            f"{risky} catch-all (risky) | "
             f"{other} unresolved."
         )
+        if self._pipeline_mode:
+            self._pipeline_mode = False
+            self._btn_pipeline.setEnabled(True)
+            self._pipeline_finish()
+
+    def _pipeline_finish(self):
+        from emailer.worker import DROP_STATUSES
+        viable  = [c for c in self._email_enriched
+                   if c.get("email") and c.get("email_status", "") not in DROP_STATUSES]
+        dropped = len(self._email_enriched) - len(viable)
+
+        ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = get_output_dir() / f"pipeline_{ts}.csv"
+        fields   = ["first_name", "last_name", "title", "company", "email",
+                    "email_status", "email_source", "location", "basin",
+                    "linkedin_url", "date_pulled"]
+        try:
+            with open(out_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows([{k: c.get(k, "") for k in fields} for c in viable])
+            self._email_status.setText(
+                f"Pipeline complete. {len(viable)} viable contacts saved to {out_path.name}  |  "
+                f"{dropped} dropped (bounced / invalid)."
+            )
+        except Exception as e:
+            self._email_status.setText(f"Pipeline complete but export failed: {e}")
 
     def _set_email_company_icon(self, company: str, icon: str, suffix: str = ""):
         for i in range(self._email_company_list.count()):
@@ -554,6 +593,14 @@ class MainWindow(QMainWindow):
             }
             QPushButton#btn_verify:hover   { background: #0D47A1; }
             QPushButton#btn_verify:disabled { background: #aaa; color: #ddd; border: none; }
+            QPushButton#btn_pipeline {
+                background: #6A1B9A;
+                color: white;
+                font-weight: bold;
+                border: none;
+            }
+            QPushButton#btn_pipeline:hover   { background: #4A148C; }
+            QPushButton#btn_pipeline:disabled { background: #aaa; color: #ddd; border: none; }
             QTableWidget {
                 gridline-color: #ddd;
                 selection-background-color: #BBDEFB;
@@ -626,6 +673,12 @@ class MainWindow(QMainWindow):
             self._queue.takeItem(i)
 
     # ── Search control ───────────────────────────────────────────────────
+
+    def _pipeline_start(self):
+        """Start the full pull → email → filter → export pipeline."""
+        self._pipeline_mode = True
+        self._btn_pipeline.setEnabled(False)
+        self._start_search()
 
     def _start_search(self):
         pending = [
@@ -777,6 +830,13 @@ class MainWindow(QMainWindow):
         self._status.setText(
             f"Done. {len(self._contacts)} contacts found. Auto-saved to {out}"
         )
+        if self._pipeline_mode and self._contacts:
+            self._status.setText(
+                f"{len(self._contacts)} contacts pulled. Starting email pipeline..."
+            )
+            self._tabs.setCurrentIndex(1)      # switch to Email Enricher tab
+            self._email_load_from_puller()
+            self._email_start()
 
     def _set_status(self, company: str, status: str, suffix: str = ""):
         icon, color = _STATUS[status]
