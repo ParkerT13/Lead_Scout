@@ -23,7 +23,7 @@ from emailer.domain_finder import find_domain
 from emailer.pattern_detector import detect_pattern
 from emailer.generator import generate_candidates
 from emailer.smtp_verifier import get_mx
-from emailer.domain_cache import put as cache_put
+from emailer.domain_cache import get as cache_get, put as cache_put
 from emailer.bounce_tracker import is_bounced
 
 if len(sys.argv) < 2:
@@ -57,28 +57,43 @@ for ci, company in enumerate(by_company.keys()):
     group = by_company[company]
     print(f"--- {company.upper()} ({len(group)} contacts) ---")
 
-    domain = find_domain(company)
-    if not domain:
-        print(f"  [!] No domain found")
-        for c in group:
-            c.update({"email": "", "email_status": "no domain", "email_source": ""})
-            results.append(c)
-        continue
-    print(f"  Domain : {domain}")
-
-    mx = get_mx(domain)
-    print(f"  MX     : {mx or 'not found'}")
-
-    pattern, pattern_source = detect_pattern(domain)
-    if pattern:
-        print(f"  Pattern: {pattern} ({pattern_source})")
-        status_label = "pattern-confirmed" if pattern_source == "scraped" else "pattern-ddg"
+    # Check cache first — respects any manual corrections made via Check Domains
+    cached = cache_get(company)
+    if cached and cached.get("domain"):
+        domain         = cached["domain"]
+        pattern        = cached.get("pattern")
+        pattern_source = cached.get("pattern_source", "cache")
+        print(f"  Domain : {domain}  [cache]")
+        # If domain is cached but pattern is unknown, re-run pattern detection
+        if not pattern or pattern_source in ("none",):
+            pattern, pattern_source = detect_pattern(domain)
+            cache_put(company, domain, pattern, pattern_source)
+        if pattern:
+            print(f"  Pattern: {pattern} ({pattern_source})")
+        else:
+            print(f"  Pattern: unknown — using first.last")
     else:
-        print(f"  Pattern: unknown — using first.last")
-        status_label = "best-guess"
+        domain = find_domain(company)
+        if not domain:
+            print(f"  [!] No domain found")
+            for c in group:
+                c.update({"email": "", "email_status": "no domain", "email_source": ""})
+                results.append(c)
+            continue
+        print(f"  Domain : {domain}")
+        mx = get_mx(domain)
+        print(f"  MX     : {mx or 'not found'}")
+        pattern, pattern_source = detect_pattern(domain)
+        if pattern:
+            print(f"  Pattern: {pattern} ({pattern_source})")
+        else:
+            print(f"  Pattern: unknown — using first.last")
+        cache_put(company, domain, pattern, pattern_source)
 
-    # Save to cache
-    cache_put(company, domain, pattern, pattern_source)
+    if pattern:
+        status_label = "pattern-confirmed" if pattern_source in ("scraped", "emailformat", "smtp-verified", "manual") else "pattern-ddg"
+    else:
+        status_label = "best-guess"
 
     for c in group:
         first = c.get("first_name") or ""

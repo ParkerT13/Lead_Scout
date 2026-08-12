@@ -161,6 +161,9 @@ for ci, company in enumerate(companies):
         pattern        = cached.get("pattern")
         pattern_source = cached.get("pattern_source", "cache")
         print(f"  Domain  : {domain}  [cache]")
+        if not pattern or pattern_source in ("none",):
+            pattern, pattern_source = detect_pattern(domain)
+            cache_put(company, domain, pattern, pattern_source)
         print(f"  Pattern : {pattern or 'unknown'}  ({pattern_source})")
     else:
         domain = find_domain(company)
@@ -186,7 +189,7 @@ for ci, company in enumerate(companies):
         cache_put(company, domain, pattern, pattern_source)
 
     # Step 2: SMTP format probe (skip if already reliably confirmed)
-    if pattern_source not in ("smtp-verified", "scraped", "manual"):
+    if pattern_source not in ("smtp-verified", "scraped", "emailformat", "manual"):
         probed = probe_format(domain, group)
         if probed:
             pattern        = probed
@@ -223,7 +226,7 @@ for ci, company in enumerate(companies):
                 status = "bounced"
             time.sleep(random.uniform(*CONTACT_DELAY))
 
-        if status == "catch-all-risky" and pattern_source in ("scraped", "smtp-verified", "manual"):
+        if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "smtp-verified", "manual"):
             status = "catch-all-confirmed"
 
         if email and is_bounced(email):
