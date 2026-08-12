@@ -23,7 +23,8 @@ from PySide6.QtCore import QThread, Signal
 from emailer.domain_finder import find_domain
 from emailer.pattern_detector import detect_pattern
 from emailer.generator import generate_candidates
-from emailer.smtp_verifier import verify_candidates, is_catch_all, get_mx, port25_available
+from emailer.smtp_verifier import get_mx, port25_available
+from emailer.email_verifier import verify_email as _verify_email
 from emailer.domain_cache import get as cache_get, put as cache_put
 from emailer.bounce_tracker import is_bounced
 
@@ -111,13 +112,7 @@ class EmailWorker(QThread):
         else:
             self.company_status.emit(company, "Pattern: unknown — trying all variants")
 
-        # Step 4: Catch-all check
-        catch_all = is_catch_all(domain)
-        if catch_all:
-            risk = "lower risk (pattern scraped)" if pattern_source == "scraped" else "HIGH RISK (pattern guessed)"
-            self.company_status.emit(company, f"{domain} is catch-all — {risk}")
-
-        # Step 5: Per-contact verification
+        # Step 4: Per-contact verification
         verified = 0
         for contact in contacts:
             if self._stop:
@@ -133,18 +128,27 @@ class EmailWorker(QThread):
                 f"[{company}] {name} — testing {len(candidates)} candidate(s) on {domain}"
             )
 
-            email, status = verify_candidates(candidates)
+            # Try each candidate; stop at first verified or catch-all result
+            email, status = "", "unknown"
+            for candidate in candidates:
+                r = _verify_email(candidate)
+                if r["status"] == "verified":
+                    email, status = candidate, "verified"
+                    break
+                if r["status"] == "catch-all-risky":
+                    email, status = candidate, "catch-all-risky"
+                    break
+                if r["status"] not in ("unknown", "error"):
+                    email, status = candidate, r["status"]
 
-            # Refine catch-all status based on how confident we are in the pattern
-            if status == "catch-all":
-                if pattern_source == "scraped":
-                    status = "catch-all-confirmed"
-                else:
-                    status = "catch-all-risky"
+            # Upgrade catch-all-risky to catch-all-confirmed if pattern was scraped
+            if status == "catch-all-risky" and pattern_source == "scraped":
+                status = "catch-all-confirmed"
 
+            catch_all = status in ("catch-all-confirmed", "catch-all-risky")
             source = domain
             if catch_all:
-                source += " (catch-all-confirmed)" if status == "catch-all-confirmed" else " (catch-all-risky)"
+                source += f" ({status})"
 
             enriched = {
                 **contact,

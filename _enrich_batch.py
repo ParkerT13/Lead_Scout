@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from emailer.domain_finder import find_domain
 from emailer.pattern_detector import detect_pattern
 from emailer.generator import generate_candidates
-from emailer.smtp_verifier import verify_candidates, is_catch_all, get_mx, port25_available
+from emailer.smtp_verifier import get_mx, port25_available
+from emailer.email_verifier import verify_email as _verify_email
 
 if len(sys.argv) < 2:
     print("Usage: python _enrich_batch.py <input.csv> [output.csv]")
@@ -93,14 +94,6 @@ for ci, company in enumerate(companies):
     else:
         print(f"  Pattern: unknown — trying all variants")
 
-    # Catch-all
-    catch_all = is_catch_all(domain)
-    if catch_all:
-        risk = "lower risk (pattern scraped)" if pattern_source == "scraped" else "HIGH RISK (pattern guessed)"
-        print(f"  Catch-all: YES — {risk}")
-    else:
-        print(f"  Catch-all: no")
-
     # Per-contact
     for c in group:
         name  = c.get("name", "")
@@ -115,14 +108,27 @@ for ci, company in enumerate(companies):
             results.append(c)
             continue
 
-        email, status = verify_candidates(candidates)
+        # Try each candidate; stop at first verified or catch-all result
+        email, status = "", "unknown"
+        for candidate in candidates:
+            r = _verify_email(candidate)
+            if r["status"] == "verified":
+                email, status = candidate, "verified"
+                break
+            if r["status"] == "catch-all-risky":
+                email, status = candidate, "catch-all-risky"
+                break
+            if r["status"] not in ("unknown", "error"):
+                email, status = candidate, r["status"]
 
-        if status == "catch-all":
-            status = "catch-all-confirmed" if pattern_source == "scraped" else "catch-all-risky"
+        # Upgrade catch-all-risky to catch-all-confirmed if pattern was scraped
+        if status == "catch-all-risky" and pattern_source == "scraped":
+            status = "catch-all-confirmed"
 
+        catch_all = status in ("catch-all-confirmed", "catch-all-risky")
         source = domain
         if catch_all:
-            source += " (catch-all-confirmed)" if status == "catch-all-confirmed" else " (catch-all-risky)"
+            source += f" ({status})"
 
         c.update({"email": email, "email_status": status, "email_source": source})
         results.append(c)
