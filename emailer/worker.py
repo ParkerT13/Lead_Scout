@@ -118,28 +118,37 @@ class EmailWorker(QThread):
             if self._stop:
                 break
 
-            name  = contact.get("name", "")
-            parts = name.strip().split()
-            first = parts[0] if parts else ""
-            last  = parts[-1] if len(parts) > 1 else ""
+            first = contact.get("first_name") or ""
+            last  = contact.get("last_name") or ""
+            if not first or not last:
+                name  = contact.get("name", "")
+                parts = name.strip().split()
+                first = parts[0] if parts else ""
+                last  = parts[-1] if len(parts) > 1 else ""
+            name = contact.get("name", f"{first} {last}".strip())
 
             candidates = generate_candidates(first, last, domain, pattern)
             self.status_update.emit(
                 f"[{company}] {name} — testing {len(candidates)} candidate(s) on {domain}"
             )
 
-            # Try each candidate; stop at first verified or catch-all result
-            email, status = "", "unknown"
+            # Default to first candidate (pattern-preferred); only override on verified
+            email  = candidates[0] if candidates else ""
+            status = "unknown"
+
             for candidate in candidates:
                 r = _verify_email(candidate)
+                self.status_update.emit(f"  -> {candidate} [{r['status']}]")
                 if r["status"] == "verified":
                     email, status = candidate, "verified"
                     break
                 if r["status"] == "catch-all-risky":
-                    email, status = candidate, "catch-all-risky"
+                    # Domain is catch-all — keep first (pattern-preferred) as the address
+                    status = "catch-all-risky"
                     break
-                if r["status"] not in ("unknown", "error"):
-                    email, status = candidate, r["status"]
+                if r["status"] == "bounced" and status == "unknown":
+                    status = "bounced"
+                    # email stays as candidates[0] — keep trying in case a later format verifies
 
             # Upgrade catch-all-risky to catch-all-confirmed if pattern was scraped
             if status == "catch-all-risky" and pattern_source == "scraped":

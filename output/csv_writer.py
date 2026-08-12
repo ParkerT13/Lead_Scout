@@ -5,7 +5,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 FIELDS = [
-    "name",
+    "first_name",
+    "last_name",
     "title",
     "company",
     "location",

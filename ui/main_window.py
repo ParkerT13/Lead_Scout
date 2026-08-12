@@ -19,8 +19,8 @@ from output.csv_writer import append_contact, export_contacts, get_output_dir
 
 logger = logging.getLogger(__name__)
 
-COLUMNS = ["Name", "Title", "Company", "Location", "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date"]
-FIELDS  = ["name", "title", "company", "location", "basin", "linkedin_url", "emp_status", "source", "date_pulled"]
+COLUMNS = ["First Name", "Last Name", "Title", "Company", "Location", "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date"]
+FIELDS  = ["first_name", "last_name", "title", "company", "location", "basin", "linkedin_url", "emp_status", "source", "date_pulled"]
 
 _EMP_STATUS_COLORS = {
     "current": "#2E7D32",   # green
@@ -158,9 +158,9 @@ class MainWindow(QMainWindow):
         self._table.setHorizontalHeaderLabels(COLUMNS)
         hh = self._table.horizontalHeader()
         hh.setSectionResizeMode(QHeaderView.Stretch)
-        # Give URL column a bit more room
-        hh.setSectionResizeMode(5, QHeaderView.Interactive)
-        self._table.setColumnWidth(5, 280)
+        # Give URL column a bit more room (now index 6 with first_name + last_name)
+        hh.setSectionResizeMode(6, QHeaderView.Interactive)
+        self._table.setColumnWidth(6, 280)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSortingEnabled(True)
@@ -252,7 +252,7 @@ class MainWindow(QMainWindow):
         self._email_count_label.setFont(font)
         right_layout.addWidget(self._email_count_label)
 
-        _EMAIL_COLS = ["Name", "Title", "Company", "Email", "Status", "Source", "LinkedIn URL"]
+        _EMAIL_COLS = ["First Name", "Last Name", "Title", "Company", "Email", "Status", "Source", "LinkedIn URL"]
         self._email_table = QTableWidget()
         self._email_table.setColumnCount(len(_EMAIL_COLS))
         self._email_table.setHorizontalHeaderLabels(_EMAIL_COLS)
@@ -323,7 +323,7 @@ class MainWindow(QMainWindow):
         for c in contacts:
             row = self._email_table.rowCount()
             self._email_table.insertRow(row)
-            for col, key in enumerate(["name", "title", "company", "email",
+            for col, key in enumerate(["first_name", "last_name", "title", "company", "email",
                                         "email_status", "email_source", "linkedin_url"]):
                 val = str(c.get(key, ""))
                 item = QTableWidgetItem(val)
@@ -379,14 +379,14 @@ class MainWindow(QMainWindow):
         # Find row by LinkedIn URL and update in place
         url = contact.get("linkedin_url", "")
         for row in range(self._email_table.rowCount()):
-            url_item = self._email_table.item(row, 6)
+            url_item = self._email_table.item(row, 7)
             if url_item and url_item.text() == url:
                 self._email_table.setSortingEnabled(False)
                 email      = contact.get("email", "")
                 status     = contact.get("email_status", "")
                 source     = contact.get("email_source", "")
 
-                self._email_table.setItem(row, 3, QTableWidgetItem(email))
+                self._email_table.setItem(row, 4, QTableWidgetItem(email))
 
                 status_item = QTableWidgetItem(status)
                 if status == "verified":
@@ -399,8 +399,8 @@ class MainWindow(QMainWindow):
                     status_item.setForeground(QColor("#C62828"))
                 else:
                     status_item.setForeground(QColor("#888"))
-                self._email_table.setItem(row, 4, status_item)
-                self._email_table.setItem(row, 5, QTableWidgetItem(source))
+                self._email_table.setItem(row, 5, status_item)
+                self._email_table.setItem(row, 6, QTableWidgetItem(source))
                 self._email_table.setSortingEnabled(True)
                 break
 
@@ -461,8 +461,8 @@ class MainWindow(QMainWindow):
         if row < 0:
             return
         menu = QMenu(self)
-        email_item = self._email_table.item(row, 3)
-        url_item   = self._email_table.item(row, 6)
+        email_item = self._email_table.item(row, 4)
+        url_item   = self._email_table.item(row, 7)
         if email_item and email_item.text():
             menu.addAction("Copy Email").triggered.connect(
                 lambda: QApplication.clipboard().setText(email_item.text())
@@ -496,7 +496,7 @@ class MainWindow(QMainWindow):
         if not path:
             return
 
-        fields = ["name", "title", "company", "email", "email_status",
+        fields = ["first_name", "last_name", "title", "company", "email", "email_status",
                   "email_source", "location", "basin", "linkedin_url", "source", "date_pulled"]
         try:
             with open(path, "w", newline="", encoding="utf-8") as f:

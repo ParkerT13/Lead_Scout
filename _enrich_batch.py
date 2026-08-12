@@ -96,10 +96,14 @@ for ci, company in enumerate(companies):
 
     # Per-contact
     for c in group:
-        name  = c.get("name", "")
-        parts = name.strip().split()
-        first = parts[0] if parts else ""
-        last  = parts[-1] if len(parts) > 1 else ""
+        first = c.get("first_name") or ""
+        last  = c.get("last_name") or ""
+        if not first or not last:
+            name  = c.get("name", "")
+            parts = name.strip().split()
+            first = parts[0] if parts else ""
+            last  = parts[-1] if len(parts) > 1 else ""
+        name = c.get("name", f"{first} {last}".strip())
 
         candidates = generate_candidates(first, last, domain, pattern)
         if not candidates:
@@ -108,18 +112,21 @@ for ci, company in enumerate(companies):
             results.append(c)
             continue
 
-        # Try each candidate; stop at first verified or catch-all result
-        email, status = "", "unknown"
+        # Default to first candidate (pattern-preferred); only override on verified
+        email  = candidates[0] if candidates else ""
+        status = "unknown"
+
         for candidate in candidates:
             r = _verify_email(candidate)
+            print(f"    -> {candidate} [{r['status']}]")
             if r["status"] == "verified":
                 email, status = candidate, "verified"
                 break
             if r["status"] == "catch-all-risky":
-                email, status = candidate, "catch-all-risky"
+                status = "catch-all-risky"
                 break
-            if r["status"] not in ("unknown", "error"):
-                email, status = candidate, r["status"]
+            if r["status"] == "bounced" and status == "unknown":
+                status = "bounced"
 
         # Upgrade catch-all-risky to catch-all-confirmed if pattern was scraped
         if status == "catch-all-risky" and pattern_source == "scraped":

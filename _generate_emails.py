@@ -81,10 +81,14 @@ for ci, company in enumerate(by_company.keys()):
     cache_put(company, domain, pattern, pattern_source)
 
     for c in group:
-        name  = c.get("name", "")
-        parts = name.strip().split()
-        first = parts[0] if parts else ""
-        last  = parts[-1] if len(parts) > 1 else ""
+        first = c.get("first_name") or ""
+        last  = c.get("last_name") or ""
+        if not first or not last:
+            name  = c.get("name", "")
+            parts = name.strip().split()
+            first = parts[0] if parts else ""
+            last  = parts[-1] if len(parts) > 1 else ""
+        name = c.get("name", f"{first} {last}".strip())
 
         candidates = generate_candidates(first, last, domain, pattern)
         email = candidates[0] if candidates else ""

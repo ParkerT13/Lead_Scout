@@ -164,8 +164,14 @@ _PREFIXES = re.compile(r"^(Dr|Mr|Mrs|Ms|Prof)\.?\s+", re.IGNORECASE)
 
 def parse_result(title: str, url: str, body: str) -> dict:
     """Extract all contact fields from a single search result."""
+    name = _extract_name(title)
+    parts = name.strip().split()
+    first_name = parts[0] if parts else ""
+    last_name  = parts[-1] if len(parts) > 1 else ""
     return {
-        "name":         _extract_name(title),
+        "name":         name,
+        "first_name":   first_name,
+        "last_name":    last_name,
         "title":        _extract_job_title(title),
         "location":     _extract_location(title, body),
         "basin":        _extract_basin(title, body),
@@ -198,6 +204,10 @@ def is_valid_contact(contact: dict, company: str) -> bool:
     if " " not in name and "." not in name:
         return False
     if len(name) > 60:
+        return False
+    # Reject contacts where last name is just an initial (e.g. "John S.")
+    name_parts = name.split()
+    if len(name_parts) >= 2 and len(name_parts[-1].rstrip(".")) <= 1:
         return False
     if any(c.isdigit() for c in name):
         return False
