@@ -29,7 +29,7 @@ from emailer.smtp_verifier import get_mx, port25_available
 from emailer.email_verifier import verify_email as _verify_email, get_mx_records, check_catch_all
 from emailer.domain_cache import get as cache_get, put as cache_put
 from emailer.bounce_tracker import is_bounced
-from emailer.api_verifier import verify_via_api
+from emailer.api_verifier import verify_via_api, reset_session as _api_reset
 
 logger = logging.getLogger(__name__)
 
@@ -53,17 +53,19 @@ class EmailWorker(QThread):
     port25_blocked   = Signal()
     all_done         = Signal()
 
-    def __init__(self, contacts: list[dict], mv_api_key: str = ""):
+    def __init__(self, contacts: list[dict], nb_api_key: str = "", reoon_api_key: str = ""):
         super().__init__()
-        self._contacts   = contacts
-        self._stop       = False
-        self._port25_ok  = True
-        self._mv_api_key = mv_api_key.strip()
+        self._contacts     = contacts
+        self._stop         = False
+        self._port25_ok    = True
+        self._nb_api_key   = nb_api_key.strip()
+        self._reoon_api_key = reoon_api_key.strip()
 
     def run(self):
         self._port25_ok = port25_available()
         if not self._port25_ok:
             self.port25_blocked.emit()
+        _api_reset()  # allow NeverBounce another shot at the start of each run
 
         by_company: dict[str, list[dict]] = defaultdict(list)
         for c in self._contacts:
@@ -169,23 +171,35 @@ class EmailWorker(QThread):
                         break
                     if r["status"] == "bounced" and status == "unknown":
                         status = "bounced"
-            elif self._mv_api_key:
-                # Port 25 blocked — use MillionVerifier API instead
-                for candidate in candidates:
-                    r = verify_via_api(candidate, self._mv_api_key)
-                    self.status_update.emit(f"  -> {candidate} [{r['status']}] (API)")
+            elif self._nb_api_key or self._reoon_api_key:
+                # Port 25 blocked — use API verification (NeverBounce first, Reoon fallback)
+                # Limit candidates checked based on pattern confidence to conserve credits:
+                #   Reliable source (KB/scraped/confirmed) -> top 2 max
+                #   Unknown pattern                        -> top 3 max
+                #   Catch-all domain (API returns catchall for all) -> stop after 1
+                _reliable = ("hubspot", "scraped", "emailformat", "smtp-verified", "manual")
+                max_checks = 2 if pattern_source in _reliable else 3
+                api_candidates = candidates[:max_checks]
+
+                for candidate in api_candidates:
+                    r = verify_via_api(candidate, self._nb_api_key, self._reoon_api_key)
+                    self.status_update.emit(f"  -> {candidate} [{r['status']}] ({r.get('detail', 'API')})")
                     if r["status"] == "verified":
                         email, status = candidate, "verified"
                         break
                     if r["status"] == "catch-all-risky":
+                        # Domain is catch-all — checking more candidates wastes credits
                         status = "catch-all-risky"
                         break
-                    if r["status"] == "bounced" and status == "unknown":
-                        status = "bounced"
+                    if r["status"] == "bounced":
+                        # Wrong format — record it and try next candidate
+                        if status == "unknown":
+                            status = "bounced"
                     if r["status"] == "unknown":
-                        break  # API unknown means credits gone or unresolvable — don't burn more
+                        # API couldn't determine — stop burning credits on this contact
+                        break
             else:
-                # Port 25 blocked, no API key — use pattern-preferred candidate as-is
+                # Port 25 blocked, no API keys — use pattern-preferred candidate as-is
                 status = "unverified"
                 self.status_update.emit(f"  -> {email} [unverified — port 25 blocked, no API key]")
 

@@ -135,7 +135,8 @@ _DEFAULT_SETTINGS = {
     "title_filter_enabled": {},   # keyword -> bool (True = checked)
     "title_filter_custom":  "",   # comma-separated extra keywords
     "title_exclude":        "intern, student, professor",
-    "reoon_api_key":    "",       # Reoon API key (fallback verifier when port 25 blocked)
+    "nb_api_key":       "",       # NeverBounce API key (used first while credits remain)
+    "reoon_api_key":    "",       # Reoon API key (automatic fallback when NeverBounce credits gone)
 }
 
 # Comprehensive O&G title keyword groups — each keyword does substring matching
@@ -345,6 +346,17 @@ class MainWindow(QMainWindow):
             pass
         for k, v in _DEFAULT_SETTINGS.items():
             self._settings.setdefault(k, v)
+        # credentials.json in app folder — shared by Parker, overrides per-machine settings
+        # for API keys so colleagues don't need their own accounts
+        _creds_path = Path(__file__).parent.parent / "credentials.json"
+        if _creds_path.exists():
+            try:
+                creds = json.loads(_creds_path.read_text(encoding="utf-8"))
+                for key in ("nb_api_key", "reoon_api_key"):
+                    if creds.get(key):
+                        self._settings[key] = creds[key]
+            except Exception:
+                pass
         # Migrate old title_include plain text → new structure (one-time)
         if "title_include" in self._settings:
             del self._settings["title_include"]
@@ -1498,15 +1510,29 @@ class MainWindow(QMainWindow):
         layout.addRow("Dark Mode:", dark_cb)
 
         # MillionVerifier API key
-        reoon_lbl = QLabel(
-            "Fallback verifier when port 25 is blocked.\n"
-            "Get a key at reoon.com/email-verifier — $29.66 for 25,000 credits (never expire)."
+        api_lbl = QLabel(
+            "Email verification APIs — used when port 25 is blocked.\n"
+            "NeverBounce credits are used first; Reoon activates automatically when they run out.\n"
+            "Keys here are overridden by credentials.json if present in the app folder."
         )
-        reoon_lbl.setStyleSheet("color: #888; font-size: 10px;")
-        reoon_lbl.setWordWrap(True)
-        layout.addRow(reoon_lbl)
+        api_lbl.setStyleSheet("color: #888; font-size: 10px;")
+        api_lbl.setWordWrap(True)
+        layout.addRow(api_lbl)
+
+        nb_edit = QLineEdit(self._settings.get("nb_api_key", ""))
+        nb_edit.setPlaceholderText("NeverBounce API key…")
+        nb_edit.setEchoMode(QLineEdit.Password)
+        nb_show = QCheckBox("Show")
+        nb_show.toggled.connect(
+            lambda checked: nb_edit.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
+        )
+        nb_row = QHBoxLayout()
+        nb_row.addWidget(nb_edit, stretch=1)
+        nb_row.addWidget(nb_show)
+        layout.addRow("NeverBounce Key:", nb_row)
+
         reoon_edit = QLineEdit(self._settings.get("reoon_api_key", ""))
-        reoon_edit.setPlaceholderText("Paste API key here…")
+        reoon_edit.setPlaceholderText("Reoon API key (fallback)…")
         reoon_edit.setEchoMode(QLineEdit.Password)
         reoon_show = QCheckBox("Show")
         reoon_show.toggled.connect(
@@ -1515,7 +1541,7 @@ class MainWindow(QMainWindow):
         reoon_row = QHBoxLayout()
         reoon_row.addWidget(reoon_edit, stretch=1)
         reoon_row.addWidget(reoon_show)
-        layout.addRow("Reoon API Key:", reoon_row)
+        layout.addRow("Reoon Key (fallback):", reoon_row)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dlg.accept)
@@ -1527,6 +1553,7 @@ class MainWindow(QMainWindow):
             self._settings["search_delay"]   = delay_spin.value()
             self._settings["default_format"] = fmt_combo.currentText()
             self._settings["dark_mode"]      = dark_cb.isChecked()
+            self._settings["nb_api_key"]     = nb_edit.text().strip()
             self._settings["reoon_api_key"]  = reoon_edit.text().strip()
             self._act_dark.setChecked(dark_cb.isChecked())
             self._save_settings()
@@ -2010,7 +2037,11 @@ class MainWindow(QMainWindow):
         self._email_progress.setRange(0, len(to_enrich))
         self._email_progress.setValue(0)
 
-        self._email_worker = EmailWorker(to_enrich, mv_api_key=self._settings.get("reoon_api_key", ""))
+        self._email_worker = EmailWorker(
+            to_enrich,
+            nb_api_key=self._settings.get("nb_api_key", ""),
+            reoon_api_key=self._settings.get("reoon_api_key", ""),
+        )
         self._email_worker.contact_enriched.connect(self._on_email_enriched)
         self._email_worker.company_started.connect(self._on_email_company_started)
         self._email_worker.company_status.connect(self._on_email_company_status)
@@ -2110,9 +2141,12 @@ class MainWindow(QMainWindow):
     @Slot()
     def _on_port25_blocked(self):
         self._port25_ok = False
-        if self._settings.get("reoon_api_key", "").strip():
+        has_nb    = bool(self._settings.get("nb_api_key", "").strip())
+        has_reoon = bool(self._settings.get("reoon_api_key", "").strip())
+        if has_nb or has_reoon:
+            verifier = "NeverBounce" + (" → Reoon fallback" if has_reoon else "")
             self._port25_banner.setText(
-                "  PORT 25 BLOCKED — Routing verification through Reoon API. "
+                f"  PORT 25 BLOCKED — Routing verification through {verifier}. "
                 "Results will be fully verified (verified / catch-all / bounced)."
             )
             self._port25_banner.setStyleSheet(

@@ -69,9 +69,9 @@ On first launch a setup wizard walks you through three things:
 - `catch-all-risky` — domain accepts all mail and format was guessed (red)
 - `unverified` — port 25 is blocked on your network; email is pattern-based but not SMTP-tested
 
-> **If most emails show "unverified":** Your office network blocks outbound port 25 (very common). Two options:
-> - **Best:** Add a Reoon API key in Settings (reoon.com/email-verifier — $29.66 for 25,000 credits that never expire). The app automatically routes verification through their servers.
-> - **Alternative:** Use **Generate Emails.bat** to export contacts, then paste the email list into MillionVerifier or NeverBounce to bulk-verify externally.
+> **If most emails show "unverified":** Your office network blocks outbound port 25 (very common). The app automatically routes through NeverBounce and Reoon if credentials are configured — ask Parker for the `credentials.json` file and drop it in your Lead Scout folder. That's it.
+>
+> If you don't have that file yet, use **Generate Emails.bat** to export contacts and verify externally.
 
 ---
 
