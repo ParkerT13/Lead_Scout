@@ -5,7 +5,7 @@ Stores email addresses that hard-bounced after a real send, so future runs
 can skip them or flag them.  Also uses accumulated bounce data to refine
 pattern confidence — if a pattern consistently bounces, confidence drops.
 
-Stored at ~/ContactPuller_Output/bounces.json
+Stored at ~/LeadScout_Output/bounces.json
 """
 
 import json
@@ -15,7 +15,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_BOUNCE_FILE = Path.home() / "ContactPuller_Output" / "bounces.json"
+_BOUNCE_FILE = Path.home() / "LeadScout_Output" / "bounces.json"
 
 
 def _load() -> dict:

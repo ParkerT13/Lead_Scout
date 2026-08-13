@@ -1,5 +1,5 @@
 """
-Create a desktop shortcut for ContactPuller on Windows.
+Create a desktop shortcut for Lead Scout on Windows.
 Called by Create Desktop Shortcut.bat — do not run directly.
 """
 import sys
@@ -10,7 +10,7 @@ PROJECT_DIR = Path(__file__).parent.resolve()
 ICON_PATH   = PROJECT_DIR / "assets" / "logo.ico"
 MAIN_PY     = PROJECT_DIR / "main.py"
 DESKTOP     = Path.home() / "Desktop"
-SHORTCUT    = DESKTOP / "ContactPuller.lnk"
+SHORTCUT    = DESKTOP / "Lead Scout.lnk"
 
 # Use pythonw.exe to suppress the console window on launch
 PYTHON_EXE  = Path(sys.executable).with_name("pythonw.exe")
@@ -26,7 +26,7 @@ $s = (New-Object -ComObject WScript.Shell).CreateShortcut('{SHORTCUT}')
 $s.TargetPath = '{PYTHON_EXE}'
 $s.Arguments = '"{MAIN_PY}"'
 $s.WorkingDirectory = '{PROJECT_DIR}'
-$s.Description = 'ContactPuller - O&G Sales Intelligence'
+$s.Description = 'Lead Scout - O&G Sales Intelligence'
 $s.WindowStyle = 7
 {icon_line}
 $s.Save()
@@ -47,7 +47,7 @@ def create_shortcut_win32():
     sc.TargetPath      = PYTHON_EXE
     sc.Arguments       = f'"{MAIN_PY}"'
     sc.WorkingDirectory= str(PROJECT_DIR)
-    sc.Description     = "ContactPuller - O&G Sales Intelligence"
+    sc.Description     = "Lead Scout - O&G Sales Intelligence"
     if ICON_PATH.exists():
         sc.IconLocation = str(ICON_PATH)
     sc.save()
@@ -66,6 +66,6 @@ if __name__ == "__main__":
         create_shortcut_powershell()
 
     if SHORTCUT.exists():
-        print(f"\nContactPuller shortcut added to Desktop.")
+        print(f"\nLead Scout shortcut added to Desktop.")
     else:
         print(f"\n[!] Shortcut may not have been created. Check Desktop manually.")

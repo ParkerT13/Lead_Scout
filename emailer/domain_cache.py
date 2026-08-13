@@ -1,7 +1,7 @@
 """
 Persistent cache for company -> (domain, pattern, pattern_source) lookups.
 
-Stored as a JSON file at ~/ContactPuller_Output/domain_cache.json so entries
+Stored as a JSON file at ~/LeadScout_Output/domain_cache.json so entries
 survive across sessions and tool runs.  Once a company's domain and pattern
 are confirmed, they never need to be re-discovered.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_CACHE_FILE = Path.home() / "ContactPuller_Output" / "domain_cache.json"
+_CACHE_FILE = Path.home() / "LeadScout_Output" / "domain_cache.json"
 
 
 def _load() -> dict:

@@ -287,7 +287,7 @@ class _QtLogHandler(logging.Handler):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("ContactPuller — O&G Sales Intelligence")
+        self.setWindowTitle("Lead Scout — O&G Sales Intelligence")
         self.setMinimumSize(1350, 820)
 
         # App icon
@@ -378,7 +378,7 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
 
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_puller_tab(),  "1 · Contact Puller")
+        self._tabs.addTab(self._build_puller_tab(),  "1 · Lead Scout")
         self._tabs.addTab(self._build_email_tab(),   "2 · Email Enricher")
         self._tabs.addTab(self._build_export_tab(),  "3 · CRM Export")
         root.addWidget(self._tabs)
@@ -448,7 +448,7 @@ class MainWindow(QMainWindow):
         ))
         tools_menu.addAction(act_check)
 
-    # ── Contact Puller tab ───────────────────────────────────────────────────
+    # ── Lead Scout tab ───────────────────────────────────────────────────
 
     def _build_puller_tab(self) -> QWidget:
         tab = QWidget()
@@ -1898,7 +1898,7 @@ class MainWindow(QMainWindow):
 
     def _email_load_from_puller(self):
         if not self._contacts:
-            self._email_status.setText("No contacts in Contact Puller yet.")
+            self._email_status.setText("No contacts in Lead Scout yet.")
             return
         self._email_contacts = [dict(c) for c in self._contacts]
         self._populate_email_table(self._email_contacts)
@@ -2760,7 +2760,7 @@ class MainWindow(QMainWindow):
 
     def _show_onboarding(self):
         dlg = QDialog(self)
-        dlg.setWindowTitle("Welcome to ContactPuller")
+        dlg.setWindowTitle("Welcome to Lead Scout")
         dlg.setMinimumSize(500, 420)
         dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         layout = QVBoxLayout(dlg)
@@ -2776,7 +2776,7 @@ class MainWindow(QMainWindow):
             logo_lbl.setAlignment(Qt.AlignCenter)
             layout.addWidget(logo_lbl)
 
-        title = QLabel("Welcome to ContactPuller")
+        title = QLabel("Welcome to Lead Scout")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
@@ -2811,7 +2811,7 @@ class MainWindow(QMainWindow):
         kw_count = len(self._get_active_include_keywords())
         s2_lbl = QLabel(
             f"{kw_count} default O&G keywords are active (geologist, engineer, VP, director…).\n"
-            "Click 'Configure Titles' in the Contact Puller tab to customize."
+            "Click 'Configure Titles' in the Lead Scout tab to customize."
         )
         s2_lbl.setWordWrap(True)
         s2_lbl.setStyleSheet("color: #aaa; font-size: 11px;")

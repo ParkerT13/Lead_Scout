@@ -17,7 +17,7 @@ from ui.main_window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("Contact Puller")
+    app.setApplicationName("Lead Scout")
     app.setOrganizationName("OilGas Tools")
     app.setStyle("Fusion")
 

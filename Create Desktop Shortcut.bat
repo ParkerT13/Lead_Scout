@@ -1,5 +1,5 @@
 @echo off
-echo ContactPuller - Create Desktop Shortcut
+echo Lead Scout - Create Desktop Shortcut
 echo =========================================
 echo.
 

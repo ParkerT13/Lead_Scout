@@ -18,7 +18,7 @@ FIELDS = [
 
 
 def get_output_dir() -> Path:
-    path = Path.home() / "ContactPuller_Output"
+    path = Path.home() / "LeadScout_Output"
     path.mkdir(exist_ok=True)
     return path
 

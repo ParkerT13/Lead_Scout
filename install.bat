@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo   Contact Puller - First Time Setup
+echo   Lead Scout - First Time Setup
 echo ============================================
 echo.
 echo Installing required components...
@@ -13,7 +13,7 @@ python -m playwright install chromium
 echo.
 echo ============================================
 echo   Setup complete!
-echo   You can now double-click "Run ContactPuller.bat"
+echo   You can now double-click "Run Lead Scout.bat"
 echo   to open the app.
 echo ============================================
 echo.

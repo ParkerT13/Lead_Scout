@@ -2,7 +2,7 @@
 LinkedIn employment verification using a real browser session via Playwright.
 
 First run: opens a visible Chrome window so you can log into LinkedIn.
-           Session is saved to ~/ContactPuller_Output/browser_session/
+           Session is saved to ~/LeadScout_Output/browser_session/
 Subsequent runs: reuses the saved session — no login needed.
 
 Reads current employer directly from the logged-in profile page, which is
@@ -23,7 +23,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_SESSION_DIR = Path.home() / "ContactPuller_Output" / "browser_session"
+_SESSION_DIR = Path.home() / "LeadScout_Output" / "browser_session"
 _DELAY       = (3.0, 7.0)   # seconds between profile visits
 
 from scraper.query_builder import generate_variants
