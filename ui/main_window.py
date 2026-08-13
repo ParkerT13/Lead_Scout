@@ -135,7 +135,7 @@ _DEFAULT_SETTINGS = {
     "title_filter_enabled": {},   # keyword -> bool (True = checked)
     "title_filter_custom":  "",   # comma-separated extra keywords
     "title_exclude":        "intern, student, professor",
-    "mv_api_key":       "",       # MillionVerifier API key (fallback when port 25 blocked)
+    "reoon_api_key":    "",       # Reoon API key (fallback verifier when port 25 blocked)
 }
 
 # Comprehensive O&G title keyword groups — each keyword does substring matching
@@ -1498,24 +1498,24 @@ class MainWindow(QMainWindow):
         layout.addRow("Dark Mode:", dark_cb)
 
         # MillionVerifier API key
-        mv_lbl = QLabel(
+        reoon_lbl = QLabel(
             "Fallback verifier when port 25 is blocked.\n"
-            "Get a key at millionverifier.com (~$0.001/email, pay-as-you-go)."
+            "Get a key at reoon.com/email-verifier — $29.66 for 25,000 credits (never expire)."
         )
-        mv_lbl.setStyleSheet("color: #888; font-size: 10px;")
-        mv_lbl.setWordWrap(True)
-        layout.addRow(mv_lbl)
-        mv_edit = QLineEdit(self._settings.get("mv_api_key", ""))
-        mv_edit.setPlaceholderText("Paste API key here…")
-        mv_edit.setEchoMode(QLineEdit.Password)
-        mv_show = QCheckBox("Show")
-        mv_show.toggled.connect(
-            lambda checked: mv_edit.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
+        reoon_lbl.setStyleSheet("color: #888; font-size: 10px;")
+        reoon_lbl.setWordWrap(True)
+        layout.addRow(reoon_lbl)
+        reoon_edit = QLineEdit(self._settings.get("reoon_api_key", ""))
+        reoon_edit.setPlaceholderText("Paste API key here…")
+        reoon_edit.setEchoMode(QLineEdit.Password)
+        reoon_show = QCheckBox("Show")
+        reoon_show.toggled.connect(
+            lambda checked: reoon_edit.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
         )
-        mv_row = QHBoxLayout()
-        mv_row.addWidget(mv_edit, stretch=1)
-        mv_row.addWidget(mv_show)
-        layout.addRow("MillionVerifier Key:", mv_row)
+        reoon_row = QHBoxLayout()
+        reoon_row.addWidget(reoon_edit, stretch=1)
+        reoon_row.addWidget(reoon_show)
+        layout.addRow("Reoon API Key:", reoon_row)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dlg.accept)
@@ -1527,7 +1527,7 @@ class MainWindow(QMainWindow):
             self._settings["search_delay"]   = delay_spin.value()
             self._settings["default_format"] = fmt_combo.currentText()
             self._settings["dark_mode"]      = dark_cb.isChecked()
-            self._settings["mv_api_key"]     = mv_edit.text().strip()
+            self._settings["reoon_api_key"]  = reoon_edit.text().strip()
             self._act_dark.setChecked(dark_cb.isChecked())
             self._save_settings()
             self._apply_style()
@@ -2010,7 +2010,7 @@ class MainWindow(QMainWindow):
         self._email_progress.setRange(0, len(to_enrich))
         self._email_progress.setValue(0)
 
-        self._email_worker = EmailWorker(to_enrich, mv_api_key=self._settings.get("mv_api_key", ""))
+        self._email_worker = EmailWorker(to_enrich, mv_api_key=self._settings.get("reoon_api_key", ""))
         self._email_worker.contact_enriched.connect(self._on_email_enriched)
         self._email_worker.company_started.connect(self._on_email_company_started)
         self._email_worker.company_status.connect(self._on_email_company_status)
@@ -2110,9 +2110,9 @@ class MainWindow(QMainWindow):
     @Slot()
     def _on_port25_blocked(self):
         self._port25_ok = False
-        if self._settings.get("mv_api_key", "").strip():
+        if self._settings.get("reoon_api_key", "").strip():
             self._port25_banner.setText(
-                "  PORT 25 BLOCKED — Routing verification through MillionVerifier API. "
+                "  PORT 25 BLOCKED — Routing verification through Reoon API. "
                 "Results will be fully verified (verified / catch-all / bounced)."
             )
             self._port25_banner.setStyleSheet(
@@ -2123,8 +2123,8 @@ class MainWindow(QMainWindow):
             self._port25_banner.setText(
                 "  PORT 25 BLOCKED — SMTP verification unavailable on this network. "
                 "Emails generated from pattern detection only (status: unverified). "
-                "Add a MillionVerifier API key in Settings for full verification, "
-                "or use Generate Emails.bat + NeverBounce/MillionVerifier externally."
+                "Add a Reoon API key in Settings for full verification, "
+                "or use Generate Emails.bat + Reoon/NeverBounce externally."
             )
             self._port25_banner.setStyleSheet(
                 "background: #7F1D1D; color: #FCA5A5; padding: 6px 10px; "

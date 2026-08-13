@@ -70,7 +70,7 @@ On first launch a setup wizard walks you through three things:
 - `unverified` — port 25 is blocked on your network; email is pattern-based but not SMTP-tested
 
 > **If most emails show "unverified":** Your office network blocks outbound port 25 (very common). Two options:
-> - **Best:** Add a MillionVerifier API key in Settings (millionverifier.com — ~$0.001/email, $10 gets you 10,000 checks). The app automatically routes verification through their servers. One key works for the whole team.
+> - **Best:** Add a Reoon API key in Settings (reoon.com/email-verifier — $29.66 for 25,000 credits that never expire). The app automatically routes verification through their servers.
 > - **Alternative:** Use **Generate Emails.bat** to export contacts, then paste the email list into MillionVerifier or NeverBounce to bulk-verify externally.
 
 ---
