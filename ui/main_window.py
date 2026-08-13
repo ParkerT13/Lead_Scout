@@ -2223,7 +2223,7 @@ class MainWindow(QMainWindow):
         )
 
         from emailer.bounce_tracker import is_bounced
-        _FORMAT_NAMES = ["first.last", "flast", "firstlast", "f.last", "first.l", "first", "last.first", "lfirst"]
+        _FORMAT_NAMES = ["flast", "first.last", "first", "firstlast", "f.last", "first.l", "first_last", "last"]
         self._email_preview_table.setRowCount(len(candidates))
         for i, cand in enumerate(candidates):
             fmt_name = _FORMAT_NAMES[i] if i < len(_FORMAT_NAMES) else ""

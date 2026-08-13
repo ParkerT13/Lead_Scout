@@ -28,16 +28,20 @@ def generate_candidates(
     fi = f[0]   # first initial
     li = l[0]   # last initial
 
-    # All candidate local-parts in preference order
+    # All candidate local-parts in preference order (ranked by real-world frequency
+    # across 941 O&G domains / 2,978 contacts from HubSpot KB):
+    #   flast 42%  |  first.last 31%  |  first 20%  |  firstlast 6%
+    #   f.last 1.4%  |  first.l 0.5%  |  first_last ~rare  |  last ~rare
+    # last.first and lfirst were removed — zero occurrences in O&G data.
     variants = [
-        f"{f}.{l}",     # first.last  (most common in corporate)
-        f"{fi}{l}",     # flast
-        f"{f}{l}",      # firstlast
-        f"{fi}.{l}",    # f.last
-        f"{f}.{li}",    # first.l
-        f"{f}",         # first
-        f"{l}.{f}",     # last.first
-        f"{li}{f}",     # lfirst
+        f"{fi}{l}",     # flast       — 42% of O&G domains
+        f"{f}.{l}",     # first.last  — 31%
+        f"{f}",         # first       — 20% (boutique/small firms)
+        f"{f}{l}",      # firstlast   — 6%
+        f"{fi}.{l}",    # f.last      — 1.4%
+        f"{f}.{li}",    # first.l     — 0.5%
+        f"{f}_{l}",     # first_last  — older IT/Microsoft-provisioned systems
+        f"{l}",         # last        — rare, European/international firms
     ]
 
     if pattern:
@@ -72,6 +76,8 @@ def _apply_pattern(pattern: str, f: str, l: str, fi: str, li: str) -> str | None
         "last.first":  f"{l}.{f}",
         "lfirst":      f"{li}{f}",
         "lastfirst":   f"{l}{f}",
+        "first_last":  f"{f}_{l}",
+        "last":        f"{l}",
     }
     return mapping.get(pattern)
 
