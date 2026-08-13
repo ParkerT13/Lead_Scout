@@ -2267,9 +2267,22 @@ class MainWindow(QMainWindow):
             return
         chosen_email = cand_item.text()
 
+        from emailer.bounce_tracker import is_bounced, remove_bounce
+        bounced = is_bounced(chosen_email)
+
         menu = QMenu(self)
-        act = menu.addAction(f"Use  {chosen_email}")
-        if menu.exec(self._email_preview_table.viewport().mapToGlobal(pos)) != act:
+        act_use    = menu.addAction(f"Use  {chosen_email}")
+        act_unbounce = None
+        if bounced:
+            act_unbounce = menu.addAction(f"Remove from bounce list & use  {chosen_email}")
+            act_unbounce.setToolTip("Clears this address from the bounce tracker, then sets it as the contact's email.")
+
+        chosen = menu.exec(self._email_preview_table.viewport().mapToGlobal(pos))
+        if chosen is None:
+            return
+        if chosen == act_unbounce:
+            remove_bounce(chosen_email)
+        elif chosen != act_use:
             return
 
         # Apply to the currently selected row in the email table

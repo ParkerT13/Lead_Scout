@@ -63,6 +63,16 @@ def is_bounced(email: str) -> bool:
     return email.lower().strip() in _load()
 
 
+def remove_bounce(email: str):
+    """Remove an email address from the bounce list (false positive / re-enable)."""
+    data = _load()
+    key  = email.lower().strip()
+    if key in data:
+        del data[key]
+        _save(data)
+        logger.info("Removed %s from bounce list", key)
+
+
 def all_bounces() -> dict:
     return _load()
 
