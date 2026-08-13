@@ -944,14 +944,17 @@ class MainWindow(QMainWindow):
         self._email_preview_label.setWordWrap(True)
         preview_layout.addWidget(self._email_preview_label)
         self._email_preview_table = QTableWidget()
-        self._email_preview_table.setColumnCount(2)
-        self._email_preview_table.setHorizontalHeaderLabels(["Format", "Email Candidate"])
+        self._email_preview_table.setColumnCount(3)
+        self._email_preview_table.setHorizontalHeaderLabels(["Format", "Email Candidate", "Status"])
         self._email_preview_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self._email_preview_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._email_preview_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self._email_preview_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._email_preview_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._email_preview_table.setMaximumHeight(120)
+        self._email_preview_table.setMaximumHeight(140)
         self._email_preview_table.setVisible(False)
+        self._email_preview_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._email_preview_table.customContextMenuRequested.connect(self._preview_context_menu)
         preview_layout.addWidget(self._email_preview_table)
         right_layout.addWidget(preview_box)
 
@@ -2216,23 +2219,84 @@ class MainWindow(QMainWindow):
         candidates = generate_candidates(fn, ln, domain, pattern=None)  # all 8 formats
         self._email_preview_label.setText(
             f"{fn} {ln}  |  {co}  |  Domain: {domain}  |  Known pattern: {pattern or 'unknown'}"
+            "  —  Right-click a row to use that address."
         )
 
+        from emailer.bounce_tracker import is_bounced
         _FORMAT_NAMES = ["first.last", "flast", "firstlast", "f.last", "first.l", "first", "last.first", "lfirst"]
         self._email_preview_table.setRowCount(len(candidates))
         for i, cand in enumerate(candidates):
-            local = cand.split("@")[0]
             fmt_name = _FORMAT_NAMES[i] if i < len(_FORMAT_NAMES) else ""
-            fmt_item = QTableWidgetItem(fmt_name)
-            em_item  = QTableWidgetItem(cand)
-            if cand == known_email:
-                em_item.setForeground(QColor("#4ADE80"))
-                fmt_item.setForeground(QColor("#4ADE80"))
-                em_item.setToolTip("Current result")
-                fmt_item.setToolTip("Current result")
+            bounced  = is_bounced(cand)
+            selected = (cand == known_email)
+
+            if selected:
+                status_text  = "selected"
+                status_color = QColor("#4ADE80")
+                row_color    = QColor("#4ADE80")
+            elif bounced:
+                status_text  = "bounced"
+                status_color = QColor("#C62828")
+                row_color    = QColor("#C62828")
+            else:
+                status_text  = ""
+                status_color = None
+                row_color    = None
+
+            fmt_item    = QTableWidgetItem(fmt_name)
+            em_item     = QTableWidgetItem(cand)
+            status_item = QTableWidgetItem(status_text)
+
+            for item in (fmt_item, em_item, status_item):
+                if row_color:
+                    item.setForeground(row_color)
+
             self._email_preview_table.setItem(i, 0, fmt_item)
             self._email_preview_table.setItem(i, 1, em_item)
+            self._email_preview_table.setItem(i, 2, status_item)
         self._email_preview_table.setVisible(True)
+
+    def _preview_context_menu(self, pos):
+        """Right-click on a candidate row → use that email for the selected contact."""
+        prev_rows = self._email_preview_table.selectionModel().selectedRows()
+        if not prev_rows:
+            return
+        prev_row = prev_rows[0].row()
+        cand_item = self._email_preview_table.item(prev_row, 1)
+        if not cand_item:
+            return
+        chosen_email = cand_item.text()
+
+        menu = QMenu(self)
+        act = menu.addAction(f"Use  {chosen_email}")
+        if menu.exec(self._email_preview_table.viewport().mapToGlobal(pos)) != act:
+            return
+
+        # Apply to the currently selected row in the email table
+        sel_rows = self._email_table.selectionModel().selectedRows()
+        if not sel_rows:
+            return
+        tbl_row = sel_rows[0].row()
+        em_col  = _EMAIL_FIELDS.index("email")
+        st_col  = _EMAIL_FIELDS.index("email_status")
+
+        em_item = QTableWidgetItem(chosen_email)
+        em_item.setForeground(QColor(_EMAIL_COLORS.get("pattern-confirmed", "#e0e0e0")))
+        self._email_table.setItem(tbl_row, em_col, em_item)
+        self._email_table.setItem(tbl_row, st_col, QTableWidgetItem("manual-override"))
+
+        # Update in-memory contact list
+        name_col = _EMAIL_FIELDS.index("name") if "name" in _EMAIL_FIELDS else None
+        if name_col is not None:
+            name_val = (self._email_table.item(tbl_row, name_col) or QTableWidgetItem("")).text()
+            for c in self._enriched:
+                if c.get("name") == name_val:
+                    c["email"] = chosen_email
+                    c["email_status"] = "manual-override"
+                    break
+
+        # Refresh preview so the selected row updates
+        self._on_email_row_selected()
 
     # ── Session persistence ──────────────────────────────────────────────────
 
