@@ -13,10 +13,11 @@ from PySide6.QtWidgets import (
     QGroupBox, QHeaderView, QMenu, QMessageBox, QAbstractItemView,
     QApplication, QTabWidget, QCheckBox, QRadioButton, QButtonGroup,
     QDialog, QTextEdit, QScrollArea, QFormLayout, QSpinBox,
-    QComboBox, QFrame, QSizePolicy, QDialogButtonBox,
+    QComboBox, QFrame, QSizePolicy, QDialogButtonBox, QPlainTextEdit,
+    QStackedWidget,
 )
-from PySide6.QtCore import Qt, Slot, QUrl, QTimer
-from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequence, QAction
+from PySide6.QtCore import Qt, Slot, QUrl, QTimer, QObject, Signal
+from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequence, QAction, QIcon
 
 from scraper.worker import SearchWorker
 from emailer.worker import EmailWorker, DROP_STATUSES
@@ -249,6 +250,36 @@ def _priority_label(title: str) -> str:
     }.get(r, "")
 
 
+_COMPLETENESS_FIELDS = [
+    "first_name", "last_name", "title", "company",
+    "location", "basin", "linkedin_url", "email",
+]
+
+def _completeness(contact: dict) -> int:
+    """Return 0-100 completeness score for a contact."""
+    filled = sum(1 for f in _COMPLETENESS_FIELDS if str(contact.get(f, "")).strip())
+    return int(filled / len(_COMPLETENESS_FIELDS) * 100)
+
+
+# ── Qt logging bridge ─────────────────────────────────────────────────────────
+
+class _LogEmitter(QObject):
+    log_record = Signal(str, str)   # (formatted_message, level_name)
+
+class _QtLogHandler(logging.Handler):
+    def __init__(self, emitter: _LogEmitter):
+        super().__init__()
+        self._emitter = emitter
+        self.setFormatter(logging.Formatter("%(asctime)s  %(name)-20s  %(message)s",
+                                            datefmt="%H:%M:%S"))
+    def emit(self, record: logging.LogRecord):
+        try:
+            msg = self.format(record)
+            self._emitter.log_record.emit(msg, record.levelname)
+        except Exception:
+            pass
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main window
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -257,30 +288,50 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ContactPuller — O&G Sales Intelligence")
-        self.setMinimumSize(1350, 780)
+        self.setMinimumSize(1350, 820)
+
+        # App icon
+        _icon_path = Path(__file__).parent.parent / "assets" / "logo.ico"
+        if _icon_path.exists():
+            self.setWindowIcon(QIcon(str(_icon_path)))
 
         # ── Core state ──────────────────────────────────────────────────────
         self._contacts:       list[dict] = []
         self._company_status: dict[str, str] = {}
-        self._seen_urls:      set[str] = set()          # duplicate detection
+        self._seen_urls:      set[str] = set()          # in-session + history dedup
         self._worker:         SearchWorker | None = None
         self._verify_worker:  VerifyWorker | None = None
         self._pipeline_mode:  bool = False
-        self._port25_ok:      bool = True               # shown in banner if blocked
+        self._port25_ok:      bool = True
 
         self._email_contacts: list[dict] = []
         self._email_worker:   EmailWorker | None = None
         self._email_enriched: list[dict] = []
         self._email_company_progress: dict[str, tuple[int,int]] = {}
 
-        self._crm_contacts:   list[dict] = []           # contacts loaded in export tab
+        self._crm_contacts:   list[dict] = []
         self._settings:       dict = {}
 
+        # ── Logging bridge ───────────────────────────────────────────────────
+        self._log_emitter = _LogEmitter()
+        self._log_handler = _QtLogHandler(self._log_emitter)
+        logging.getLogger().addHandler(self._log_handler)
+        logging.getLogger().setLevel(logging.DEBUG)
+
         self._load_settings()
+        self._load_history_urls()       # cross-session dup detection
         self._build_ui()
         self._apply_style()
         self._register_shortcuts()
+        self._check_linkedin_session()  # set indicator state
+
+        # Wire log signal after UI is built
+        self._log_emitter.log_record.connect(self._append_log)
+
+        first_run = not _SETTINGS_FILE.exists()
         self._session_offer_restore()
+        if first_run:
+            QTimer.singleShot(400, self._show_onboarding)
 
     # ── Settings ────────────────────────────────────────────────────────────
 
@@ -302,6 +353,21 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def _load_history_urls(self):
+        """Pre-populate seen_urls from all_contacts.csv so we skip historical dupes."""
+        master = get_output_dir() / "all_contacts.csv"
+        if not master.exists():
+            return
+        try:
+            with open(master, encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    url = row.get("linkedin_url", "").strip()
+                    if url:
+                        self._seen_urls.add(url)
+            logger.info("Loaded %d historical LinkedIn URLs for dup detection", len(self._seen_urls))
+        except Exception as e:
+            logger.warning("Could not load history URLs: %s", e)
+
     # ── UI Construction ──────────────────────────────────────────────────────
 
     def _build_ui(self):
@@ -317,11 +383,27 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._build_export_tab(),  "3 · CRM Export")
         root.addWidget(self._tabs)
 
+        # ── Logging panel (collapsible) ──────────────────────────────────────
+        self._log_panel = QPlainTextEdit()
+        self._log_panel.setReadOnly(True)
+        self._log_panel.setMaximumHeight(160)
+        self._log_panel.setMinimumHeight(160)
+        self._log_panel.setVisible(False)
+        self._log_panel.setObjectName("log_panel")
+        root.addWidget(self._log_panel)
+
         self._build_menu_bar()
 
-        # Persistent status bar (cross-tab)
-        self.statusBar().showMessage("Ready.")
-        self.statusBar().setStyleSheet("QStatusBar { font-size: 12px; }")
+        # Persistent status bar with log toggle
+        sb = self.statusBar()
+        sb.showMessage("Ready.")
+        sb.setStyleSheet("QStatusBar { font-size: 12px; }")
+        self._btn_log_toggle = QPushButton("Show Logs")
+        self._btn_log_toggle.setMaximumHeight(20)
+        self._btn_log_toggle.setFlat(True)
+        self._btn_log_toggle.setStyleSheet("font-size: 10px; color: #888;")
+        self._btn_log_toggle.clicked.connect(self._toggle_log_panel)
+        sb.addPermanentWidget(self._btn_log_toggle)
 
     def _build_menu_bar(self):
         menu_bar = self.menuBar()
@@ -375,9 +457,71 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(10, 10, 10, 10)
         root.addLayout(self._build_toolbar())
         root.addLayout(self._build_filter_row())
+        root.addLayout(self._build_search_bar())
         root.addWidget(self._build_splitter(), stretch=1)
         root.addLayout(self._build_bottom_bar())
         return tab
+
+    def _build_search_bar(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(6)
+
+        lbl = QLabel("Search results:")
+        lbl.setStyleSheet("font-size: 11px; color: #aaa;")
+        row.addWidget(lbl)
+
+        self._search_bar = QLineEdit()
+        self._search_bar.setPlaceholderText("Filter by name, title, company, location…")
+        self._search_bar.setMaximumHeight(28)
+        self._search_bar.textChanged.connect(self._apply_table_filter)
+        row.addWidget(self._search_bar, stretch=2)
+
+        self._search_company = QComboBox()
+        self._search_company.setMaximumHeight(28)
+        self._search_company.addItem("All Companies")
+        self._search_company.currentTextChanged.connect(self._apply_table_filter)
+        row.addWidget(self._search_company)
+
+        btn_clear = QPushButton("Clear")
+        btn_clear.setMaximumHeight(28)
+        btn_clear.setMaximumWidth(60)
+        btn_clear.clicked.connect(lambda: (self._search_bar.clear(),
+                                           self._search_company.setCurrentIndex(0)))
+        row.addWidget(btn_clear)
+
+        self._completeness_label = QLabel("")
+        self._completeness_label.setStyleSheet("color: #888; font-size: 11px;")
+        row.addWidget(self._completeness_label)
+
+        return row
+
+    def _apply_table_filter(self):
+        text    = self._search_bar.text().lower().strip()
+        company = self._search_company.currentText()
+        show_all_companies = (company == "All Companies")
+
+        for row in range(self._table.rowCount()):
+            match_text = True
+            match_co   = True
+            if text:
+                row_text = " ".join(
+                    (self._table.item(row, c) or QTableWidgetItem("")).text()
+                    for c in range(self._table.columnCount())
+                ).lower()
+                match_text = text in row_text
+            if not show_all_companies:
+                co_item = self._table.item(row, FIELDS.index("company"))
+                match_co = co_item and co_item.text() == company
+            self._table.setRowHidden(row, not (match_text and match_co))
+
+    def _update_completeness_label(self):
+        if not self._contacts:
+            self._completeness_label.setText("")
+            return
+        avg = sum(_completeness(c) for c in self._contacts) // len(self._contacts)
+        color = "#4ADE80" if avg >= 80 else "#FBBF24" if avg >= 50 else "#F87171"
+        self._completeness_label.setText(f"Avg completeness: <b style='color:{color}'>{avg}%</b>")
+        self._completeness_label.setTextFormat(Qt.RichText)
 
     def _build_filter_row(self) -> QHBoxLayout:
         row = QHBoxLayout()
@@ -595,6 +739,23 @@ class MainWindow(QMainWindow):
         btn_export.clicked.connect(self._export_csv)
         row.addWidget(btn_export)
 
+        # LinkedIn session health indicator
+        row.addSpacing(12)
+        self._li_status_label = QLabel()
+        self._li_status_label.setStyleSheet("font-size: 11px;")
+        self._li_status_label.setToolTip(
+            "LinkedIn browser session status.\n"
+            "Active = Playwright session found (employment verify will work).\n"
+            "Login Required = run 'Verify Employment' once to log in."
+        )
+        row.addWidget(self._li_status_label)
+
+        self._li_login_btn = QPushButton("LinkedIn Login")
+        self._li_login_btn.setMaximumHeight(30)
+        self._li_login_btn.setToolTip("Open browser to log into LinkedIn and save the session.")
+        self._li_login_btn.clicked.connect(self._linkedin_relogin)
+        row.addWidget(self._li_login_btn)
+
         return row
 
     def _build_splitter(self) -> QSplitter:
@@ -709,6 +870,33 @@ class MainWindow(QMainWindow):
         btn_export.setMinimumHeight(36)
         btn_export.clicked.connect(self._email_export)
         top.addWidget(btn_export)
+
+        btn_mv_export = QPushButton("Export for Verification…")
+        btn_mv_export.setMinimumHeight(36)
+        btn_mv_export.setToolTip(
+            "Export email list in MillionVerifier / NeverBounce format.\n"
+            "Upload to either service, then import results back."
+        )
+        btn_mv_export.clicked.connect(self._mv_export)
+        top.addWidget(btn_mv_export)
+
+        btn_mv_import = QPushButton("Import Verification Results…")
+        btn_mv_import.setMinimumHeight(36)
+        btn_mv_import.setToolTip(
+            "Import results from MillionVerifier or NeverBounce.\n"
+            "Updates email_status for each contact."
+        )
+        btn_mv_import.clicked.connect(self._mv_import)
+        top.addWidget(btn_mv_import)
+
+        btn_bounce = QPushButton("Import Bounces…")
+        btn_bounce.setMinimumHeight(36)
+        btn_bounce.setToolTip(
+            "Import a bounce list from your ESP (Mailchimp, Outreach, etc.).\n"
+            "Marks those emails in the bounce tracker so they are skipped in future runs."
+        )
+        btn_bounce.clicked.connect(self._import_bounces_dialog)
+        top.addWidget(btn_bounce)
 
         root.addLayout(top)
 
@@ -1605,6 +1793,7 @@ class MainWindow(QMainWindow):
         self._table.setSortingEnabled(True)
         self._count_label.setText(f"{len(self._contacts)} contacts found")
         append_contact(contact, contact.get("company", "unknown"))
+        self._on_contact_added_update_ui(contact)
 
     @Slot(str)
     def _on_started(self, company: str):
@@ -2173,26 +2362,55 @@ class MainWindow(QMainWindow):
         info.setWordWrap(True)
         layout.addWidget(info)
 
+        # Load KB for confidence display
+        from emailer.pattern_detector import _load_kb
+        kb = _load_kb()
+
         table = QTableWidget()
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["Company", "Domain", "Pattern", "Source"])
+        table.setColumnCount(6)
+        table.setHorizontalHeaderLabels(["Company", "Domain", "Pattern", "Source", "KB Confidence", "KB Samples"])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setAlternatingRowColors(True)
 
         entries = cache_all()
         table.setRowCount(len(entries))
         for row, (company, info_dict) in enumerate(sorted(entries.items())):
+            domain = info_dict.get("domain", "")
             table.setItem(row, 0, QTableWidgetItem(company))
-            table.setItem(row, 1, QTableWidgetItem(info_dict.get("domain", "")))
+            table.setItem(row, 1, QTableWidgetItem(domain))
             pattern_item = QTableWidgetItem(info_dict.get("pattern") or "")
             table.setItem(row, 2, pattern_item)
             src_item = QTableWidgetItem(info_dict.get("pattern_source", ""))
             src_item.setFlags(src_item.flags() & ~Qt.ItemIsEditable)
             table.setItem(row, 3, src_item)
+
+            # KB confidence
+            kb_entry = kb.get(domain, {})
+            if kb_entry:
+                conf = kb_entry.get("confidence", 0)
+                n    = kb_entry.get("sample_count", 0)
+                conf_text = f"{int(conf*100)}%  ({n} contacts)"
+                conf_item = QTableWidgetItem(conf_text)
+                conf_item.setForeground(QColor(
+                    "#4ADE80" if conf >= 0.9 else "#FBBF24" if conf >= 0.7 else "#F87171"
+                ))
+            else:
+                conf_item = QTableWidgetItem("—  not in KB")
+                conf_item.setForeground(QColor("#6B7280"))
+            conf_item.setFlags(conf_item.flags() & ~Qt.ItemIsEditable)
+            table.setItem(row, 4, conf_item)
+
+            samples = ", ".join(kb_entry.get("samples", []))
+            samp_item = QTableWidgetItem(samples)
+            samp_item.setFlags(samp_item.flags() & ~Qt.ItemIsEditable)
+            samp_item.setForeground(QColor("#6B7280"))
+            table.setItem(row, 5, samp_item)
 
         # Only domain and pattern are editable
         for row in range(table.rowCount()):
@@ -2252,3 +2470,324 @@ class MainWindow(QMainWindow):
             os.startfile(str(folder))
         else:
             subprocess.Popen(["xdg-open", str(folder)])
+
+    # ── Bounce importer ──────────────────────────────────────────────────────
+
+    def _import_bounces_dialog(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import Bounce List", str(get_output_dir()),
+            "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)"
+        )
+        if not path:
+            return
+        try:
+            from emailer.bounce_tracker import record_bounces
+            emails = []
+            with open(path, encoding="utf-8") as f:
+                # Try CSV first, fall back to one-per-line
+                content = f.read()
+            f_lines = content.splitlines()
+            if "," in f_lines[0] if f_lines else False:
+                import io
+                reader = csv.DictReader(io.StringIO(content))
+                # Accept any column named email, Email, EMAIL, address, etc.
+                email_col = next(
+                    (k for k in (reader.fieldnames or [])
+                     if "email" in k.lower() or "address" in k.lower()), None
+                )
+                if email_col:
+                    emails = [row[email_col].strip() for row in reader if row.get(email_col, "").strip()]
+                else:
+                    emails = [line.strip() for line in f_lines if "@" in line]
+            else:
+                emails = [line.strip() for line in f_lines if "@" in line]
+
+            if not emails:
+                QMessageBox.warning(self, "No Emails Found",
+                                    "Could not find any email addresses in the file.\n"
+                                    "Ensure the CSV has an 'email' or 'address' column.")
+                return
+
+            campaign, ok = QLineEdit.getText if False else ("", True)
+            # Simple campaign name prompt
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Campaign Name (optional)")
+            dlg.setFixedSize(340, 110)
+            lay = QVBoxLayout(dlg)
+            edit = QLineEdit()
+            edit.setPlaceholderText("e.g.  Q3 Permian Outreach")
+            lay.addWidget(QLabel("Tag these bounces with a campaign name:"))
+            lay.addWidget(edit)
+            btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            btns.accepted.connect(dlg.accept)
+            btns.rejected.connect(dlg.reject)
+            lay.addWidget(btns)
+            if dlg.exec() == QDialog.Accepted:
+                campaign = edit.text().strip()
+
+            record_bounces(emails, campaign)
+            msg = f"Recorded {len(emails)} bounced addresses."
+            if campaign:
+                msg += f"  Campaign: {campaign}"
+            self.statusBar().showMessage(msg)
+            QMessageBox.information(self, "Bounces Imported", msg)
+        except Exception as e:
+            QMessageBox.warning(self, "Import Error", str(e))
+
+    # ── MillionVerifier / NeverBounce export + import ─────────────────────────
+
+    def _mv_export(self):
+        """Export email list in MillionVerifier / NeverBounce input format."""
+        data = self._email_enriched if self._email_enriched else self._email_contacts
+        emails = [c.get("email", "").strip() for c in data if c.get("email", "").strip()]
+        if not emails:
+            QMessageBox.warning(self, "No Emails", "No email addresses to export.")
+            return
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default = str(get_output_dir() / f"verify_input_{ts}.csv")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export for Verification", default, "CSV Files (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["email"])
+                for email in emails:
+                    writer.writerow([email])
+            self.statusBar().showMessage(
+                f"Exported {len(emails)} emails to {Path(path).name}  "
+                f"— upload to MillionVerifier or NeverBounce, then import results."
+            )
+        except Exception as e:
+            QMessageBox.warning(self, "Export Error", str(e))
+
+    def _mv_import(self):
+        """Import MillionVerifier / NeverBounce result CSV and update statuses."""
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import Verification Results", str(get_output_dir()),
+            "CSV Files (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            with open(path, encoding="utf-8") as f:
+                rows = list(csv.DictReader(f))
+
+            if not rows:
+                QMessageBox.warning(self, "Empty File", "No rows found in the results file.")
+                return
+
+            headers = list(rows[0].keys())
+            # Detect email + result columns flexibly
+            email_col  = next((h for h in headers if "email" in h.lower()), None)
+            result_col = next((h for h in headers if any(k in h.lower()
+                               for k in ("result", "status", "verdict", "state"))), None)
+
+            if not email_col or not result_col:
+                QMessageBox.warning(self, "Column Not Found",
+                                    f"Expected 'email' and 'result' columns.\nFound: {headers}")
+                return
+
+            # MillionVerifier: ok/invalid/unknown/catch-all/disposable
+            # NeverBounce:     valid/invalid/disposable/unknown/catchall
+            _MV_MAP = {
+                "ok":          "verified",
+                "valid":       "verified",
+                "invalid":     "bounced",
+                "unknown":     "unknown",
+                "catch-all":   "catch-all-risky",
+                "catchall":    "catch-all-risky",
+                "disposable":  "bounced",
+            }
+
+            result_map = {row[email_col].strip().lower(): row[result_col].strip().lower()
+                          for row in rows if row.get(email_col)}
+
+            updated = 0
+            all_data = self._email_enriched if self._email_enriched else self._email_contacts
+            for c in all_data:
+                email = c.get("email", "").strip().lower()
+                if email in result_map:
+                    new_status = _MV_MAP.get(result_map[email], result_map[email])
+                    c["email_status"] = new_status
+                    c["confidence"]   = _confidence(new_status)
+                    updated += 1
+
+            # Refresh email table
+            if self._email_enriched:
+                self._populate_email_table(self._email_enriched)
+            msg = f"Updated {updated} contacts from verification results."
+            self.statusBar().showMessage(msg)
+            QMessageBox.information(self, "Results Imported", msg)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Import Error", str(e))
+
+    # ── Logging panel ─────────────────────────────────────────────────────────
+
+    @Slot(str, str)
+    def _append_log(self, message: str, level: str):
+        colors = {
+            "DEBUG":    "#6B7280",
+            "INFO":     "#D1D5DB",
+            "WARNING":  "#FBBF24",
+            "ERROR":    "#F87171",
+            "CRITICAL": "#EF4444",
+        }
+        color = colors.get(level, "#D1D5DB")
+        self._log_panel.appendHtml(f'<span style="color:{color}; font-family:monospace; font-size:10px;">{message}</span>')
+        # Auto-scroll to bottom
+        sb = self._log_panel.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def _toggle_log_panel(self):
+        visible = not self._log_panel.isVisible()
+        self._log_panel.setVisible(visible)
+        self._btn_log_toggle.setText("Hide Logs" if visible else "Show Logs")
+
+    # ── LinkedIn session indicator ────────────────────────────────────────────
+
+    def _check_linkedin_session(self):
+        session_dir = get_output_dir() / "browser_session" / "Default"
+        has_session = session_dir.exists() and any(session_dir.iterdir())
+        if has_session:
+            self._li_status_label.setText("LinkedIn: Active")
+            self._li_status_label.setStyleSheet("color: #4ADE80; font-size: 11px; font-weight: bold;")
+            self._li_login_btn.setVisible(False)
+        else:
+            self._li_status_label.setText("LinkedIn: Login Required")
+            self._li_status_label.setStyleSheet("color: #FBBF24; font-size: 11px; font-weight: bold;")
+            self._li_login_btn.setVisible(True)
+
+    def _linkedin_relogin(self):
+        """Launch Playwright browser so user can log into LinkedIn and save session."""
+        script = Path(__file__).parent.parent / "_verify_linkedin_browser.py"
+        if not script.exists():
+            QMessageBox.warning(self, "Not Found",
+                                "Could not find _verify_linkedin_browser.py.\n"
+                                "Run it manually from the project folder.")
+            return
+        import sys
+        subprocess.Popen([sys.executable, str(script), "--login-only"],
+                         cwd=str(script.parent))
+        QMessageBox.information(self, "LinkedIn Login",
+                                "A browser window is opening.\n\n"
+                                "Log into LinkedIn, then close the browser.\n"
+                                "The session will be saved automatically.")
+        QTimer.singleShot(3000, self._check_linkedin_session)
+
+    # ── Onboarding wizard ─────────────────────────────────────────────────────
+
+    def _show_onboarding(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Welcome to ContactPuller")
+        dlg.setMinimumSize(500, 420)
+        dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(14)
+
+        # Logo / header
+        icon_path = Path(__file__).parent.parent / "assets" / "logo.png"
+        if icon_path.exists():
+            logo_lbl = QLabel()
+            pix = __import__("PySide6.QtGui", fromlist=["QPixmap"]).QPixmap(str(icon_path))
+            logo_lbl.setPixmap(pix.scaled(72, 72, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            logo_lbl.setAlignment(Qt.AlignCenter)
+            layout.addWidget(logo_lbl)
+
+        title = QLabel("Welcome to ContactPuller")
+        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        subtitle = QLabel(
+            "O&G Sales Intelligence — find contacts, generate emails, export to your CRM.\n"
+            "Let's get you set up in three quick steps."
+        )
+        subtitle.setWordWrap(True)
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("color: #aaa; font-size: 12px;")
+        layout.addWidget(subtitle)
+
+        layout.addWidget(self._make_separator())
+
+        # Step 1: Output folder
+        step1 = QGroupBox("Step 1 — Output Folder")
+        s1l = QHBoxLayout(step1)
+        self._ob_out_edit = QLineEdit(self._settings.get("output_dir", str(get_output_dir())))
+        btn_browse = QPushButton("Browse…")
+        btn_browse.clicked.connect(lambda: (
+            p := QFileDialog.getExistingDirectory(dlg, "Output Folder"),
+            self._ob_out_edit.setText(p) if p else None,
+        ))
+        s1l.addWidget(self._ob_out_edit, stretch=1)
+        s1l.addWidget(btn_browse)
+        layout.addWidget(step1)
+
+        # Step 2: Title filter
+        step2 = QGroupBox("Step 2 — Title Filter")
+        s2l = QVBoxLayout(step2)
+        kw_count = len(self._get_active_include_keywords())
+        s2_lbl = QLabel(
+            f"{kw_count} default O&G keywords are active (geologist, engineer, VP, director…).\n"
+            "Click 'Configure Titles' in the Contact Puller tab to customize."
+        )
+        s2_lbl.setWordWrap(True)
+        s2_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
+        s2l.addWidget(s2_lbl)
+        layout.addWidget(step2)
+
+        # Step 3: First company
+        step3 = QGroupBox("Step 3 — Add Your First Company")
+        s3l = QHBoxLayout(step3)
+        self._ob_company_edit = QLineEdit()
+        self._ob_company_edit.setPlaceholderText("e.g.  EOG Resources")
+        s3l.addWidget(self._ob_company_edit, stretch=1)
+        layout.addWidget(step3)
+
+        layout.addStretch()
+
+        btn_row = QHBoxLayout()
+        btn_skip = QPushButton("Skip")
+        btn_skip.clicked.connect(dlg.reject)
+        btn_start = QPushButton("Get Started →")
+        btn_start.setObjectName("btn_start")
+        btn_start.setMinimumHeight(38)
+        btn_start.clicked.connect(dlg.accept)
+        btn_row.addWidget(btn_skip)
+        btn_row.addStretch()
+        btn_row.addWidget(btn_start)
+        layout.addLayout(btn_row)
+
+        if dlg.exec() == QDialog.Accepted:
+            out = self._ob_out_edit.text().strip()
+            if out:
+                self._settings["output_dir"] = out
+                self._save_settings()
+            company = self._ob_company_edit.text().strip()
+            if company and not self._in_queue(company):
+                self._enqueue(company)
+                self._input.setText(company)
+                self._input.clear()
+
+    @staticmethod
+    def _make_separator() -> QFrame:
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        return line
+
+    # ── Completeness + search updates on new contact ──────────────────────────
+
+    def _on_contact_added_update_ui(self, contact: dict):
+        """Called after a contact is added — update search company filter + completeness."""
+        company = contact.get("company", "")
+        if company:
+            existing = [self._search_company.itemText(i)
+                        for i in range(self._search_company.count())]
+            if company not in existing:
+                self._search_company.addItem(company)
+        self._update_completeness_label()
