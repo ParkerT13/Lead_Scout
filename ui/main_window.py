@@ -1339,8 +1339,8 @@ class MainWindow(QMainWindow):
             QPushButton#btn_retry:disabled { background: #bbb; color: #888; border: none; }
             QTableWidget {
                 gridline-color: #ddd;
-                selection-background-color: #BBDEFB;
-                selection-color: #000;
+                selection-background-color: #F97316;
+                selection-color: #fff;
             }
             QHeaderView::section {
                 background: #ececec; font-weight: bold;
@@ -1348,7 +1348,7 @@ class MainWindow(QMainWindow):
                 border-right: 1px solid #ddd;
             }
             QListWidget::item         { padding: 5px 4px; }
-            QListWidget::item:selected { background: #BBDEFB; color: #000; }
+            QListWidget::item:selected { background: #F97316; color: #fff; }
             QScrollArea { border: none; }
         """)
 
@@ -1404,8 +1404,9 @@ class MainWindow(QMainWindow):
             QPushButton#btn_retry:hover   { background: #E65100; }
             QPushButton#btn_retry:disabled { background: #444; color: #777; border: none; }
             QTableWidget {
-                background: #252526; gridline-color: #333;
-                selection-background-color: #264f78;
+                background: #1a2a3a; gridline-color: #2a3f52;
+                alternate-background-color: #1e3348;
+                selection-background-color: #F97316;
                 selection-color: #fff; color: #e0e0e0;
             }
             QTableWidget QTableCornerButton::section { background: #333; }
@@ -1418,7 +1419,7 @@ class MainWindow(QMainWindow):
                 background: #252526; color: #e0e0e0; border: 1px solid #444;
             }
             QListWidget::item         { padding: 5px 4px; }
-            QListWidget::item:selected { background: #264f78; color: #fff; }
+            QListWidget::item:selected { background: #F97316; color: #fff; }
             QLineEdit, QTextEdit, QSpinBox, QComboBox {
                 background: #2d2d2d; color: #e0e0e0;
                 border: 1px solid #555; border-radius: 3px; padding: 3px;

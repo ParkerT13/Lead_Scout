@@ -12,8 +12,10 @@ MAIN_PY     = PROJECT_DIR / "main.py"
 DESKTOP     = Path.home() / "Desktop"
 SHORTCUT    = DESKTOP / "ContactPuller.lnk"
 
-# Find the Python executable being used
-PYTHON_EXE  = sys.executable
+# Use pythonw.exe to suppress the console window on launch
+PYTHON_EXE  = Path(sys.executable).with_name("pythonw.exe")
+if not PYTHON_EXE.exists():
+    PYTHON_EXE = Path(sys.executable)  # fallback if pythonw not found
 
 
 def create_shortcut_powershell():
@@ -25,6 +27,7 @@ $s.TargetPath = '{PYTHON_EXE}'
 $s.Arguments = '"{MAIN_PY}"'
 $s.WorkingDirectory = '{PROJECT_DIR}'
 $s.Description = 'ContactPuller - O&G Sales Intelligence'
+$s.WindowStyle = 7
 {icon_line}
 $s.Save()
 """
