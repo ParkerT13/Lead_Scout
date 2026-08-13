@@ -2,9 +2,9 @@
 Generate ContactPuller app logo / icon.
 
 Saves:
-  assets/logo.svg   — scalable source
-  assets/logo.png   — 256x256 for display / splash
-  assets/logo.ico   — multi-size Windows icon (16/32/48/64/128/256)
+  assets/logo.svg   -- scalable source
+  assets/logo.png   -- 512x512 for display / splash
+  assets/logo.ico   -- multi-size Windows icon (16/32/48/64/128/256)
 
 Run once from the project root:
     python generate_logo.py
@@ -19,40 +19,48 @@ from pathlib import Path
 ASSETS = Path(__file__).parent / "assets"
 ASSETS.mkdir(exist_ok=True)
 
-# ── SVG source ────────────────────────────────────────────────────────────────
-# Design: dark navy rounded square, orange target crosshair, white contact
-# silhouette at centre.  Reads well at every size from 16×16 to 256×256.
+# ── SVG source ─────────────────────────────────────────────────────────────────
+# Bold, clean design that reads at every size from 16x16 to 512x512.
+# Strokes and shapes are intentionally thick so nothing disappears when small.
 
 SVG_SOURCE = """\
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
 
-  <!-- Background: dark navy, rounded corners -->
-  <rect width="100" height="100" rx="18" ry="18" fill="#0F172A"/>
+  <!-- Background: deep navy, rounded corners -->
+  <rect width="100" height="100" rx="16" ry="16" fill="#0F172A"/>
 
-  <!-- Subtle inner glow ring behind person -->
-  <circle cx="50" cy="50" r="26" fill="#1E3A5F" opacity="0.6"/>
+  <!-- Subtle radial glow behind person -->
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%"   stop-color="#1E40AF" stop-opacity="0.55"/>
+    <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+  </radialGradient>
+  <circle cx="50" cy="50" r="44" fill="url(#glow)"/>
 
-  <!-- Outer target / crosshair ring -->
-  <circle cx="50" cy="50" r="32" fill="none" stroke="#F97316" stroke-width="4.5"/>
+  <!-- Outer target ring — bold -->
+  <circle cx="50" cy="50" r="34" fill="none" stroke="#F97316" stroke-width="5.5"/>
 
-  <!-- Crosshair ticks (4 compass points) -->
-  <line x1="50" y1="10" x2="50" y2="21" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
-  <line x1="50" y1="79" x2="50" y2="90" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
-  <line x1="10" y1="50" x2="21" y2="50" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
-  <line x1="79" y1="50" x2="90" y2="50" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+  <!-- Inner target ring — thinner accent -->
+  <circle cx="50" cy="50" r="26" fill="none" stroke="#F97316" stroke-width="1.8" opacity="0.4"/>
 
-  <!-- Person silhouette — head -->
-  <circle cx="50" cy="42" r="9.5" fill="white"/>
+  <!-- Crosshair ticks — bold and well-spaced -->
+  <line x1="50" y1="4"  x2="50" y2="17" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
+  <line x1="50" y1="83" x2="50" y2="96" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
+  <line x1="4"  y1="50" x2="17" y2="50" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
+  <line x1="83" y1="50" x2="96" y2="50" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Person silhouette — shoulders -->
-  <path d="M30,67 Q30,54 50,54 Q70,54 70,67 Z" fill="white"/>
+  <!-- Person silhouette — head (larger, bold) -->
+  <circle cx="50" cy="40" r="10" fill="#FFFFFF"/>
 
-  <!-- Tiny "pull" arrow at bottom-right corner (data pull metaphor) -->
-  <circle cx="79" cy="79" r="10" fill="#F97316"/>
-  <path d="M75,75 L83,75 L83,83" fill="none" stroke="white"
-        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="75" y1="83" x2="83" y2="75" stroke="white"
-        stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Person silhouette — body / shoulders (clean arc) -->
+  <path d="M28,68 C28,54 72,54 72,68 Z" fill="#FFFFFF"/>
+
+  <!-- Pull-arrow badge — bottom-right, bold and readable -->
+  <circle cx="78" cy="78" r="12" fill="#F97316"/>
+  <!-- Down-right arrow -->
+  <polyline points="72,72 80,72 80,80" fill="none" stroke="#FFFFFF"
+            stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="72" y1="80" x2="80" y2="72" stroke="#FFFFFF"
+        stroke-width="3" stroke-linecap="round"/>
 
 </svg>
 """
@@ -61,59 +69,62 @@ svg_path = ASSETS / "logo.svg"
 svg_path.write_text(SVG_SOURCE, encoding="utf-8")
 print(f"[+] SVG  -> {svg_path}")
 
-# ── Render to PNG and ICO via PySide6 ────────────────────────────────────────
+# ── Render via PySide6 at 1024x1024, then LANCZOS-downscale all outputs ────────
+# Rendering at high resolution then downscaling eliminates the pixelation that
+# happens when you render SVG directly at small target sizes.
 
-app = None
+MASTER_PX = 1024  # render everything from this resolution
+
 try:
     from PySide6.QtWidgets import QApplication
     from PySide6.QtSvg import QSvgRenderer
-    from PySide6.QtGui import QImage, QPainter, QIcon, QPixmap
-    from PySide6.QtCore import QByteArray, Qt
+    from PySide6.QtGui import QImage, QPainter
+    from PySide6.QtCore import QByteArray
 
     app = QApplication.instance() or QApplication(sys.argv)
 
     svg_bytes = QByteArray(SVG_SOURCE.encode("utf-8"))
     renderer  = QSvgRenderer(svg_bytes)
 
-    def render_size(px: int) -> QImage:
-        img = QImage(px, px, QImage.Format_ARGB32)
-        img.fill(0)
-        p = QPainter(img)
-        p.setRenderHint(QPainter.Antialiasing)
-        renderer.render(p)
-        p.end()
-        return img
+    # Render master at high resolution
+    master_img = QImage(MASTER_PX, MASTER_PX, QImage.Format_ARGB32)
+    master_img.fill(0)
+    p = QPainter(master_img)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.SmoothPixmapTransform)
+    renderer.render(p)
+    p.end()
 
-    # 256×256 PNG
-    big = render_size(256)
+    # Convert master to Pillow for high-quality downscaling
+    from PIL import Image as PILImage
+
+    master_buf = master_img.bits().tobytes()
+    master_pil = PILImage.frombytes("RGBA", (MASTER_PX, MASTER_PX), master_buf, "raw", "BGRA")
+
+    # 512x512 PNG
+    png_512 = master_pil.resize((512, 512), PILImage.LANCZOS)
     png_path = str(ASSETS / "logo.png")
-    big.save(png_path, "PNG")
-    print(f"[+] PNG  -> {png_path}")
+    png_512.save(png_path, "PNG")
+    print(f"[+] PNG  -> {png_path}  (512x512)")
 
-    # Multi-size ICO via Pillow
-    try:
-        from PIL import Image as PILImage
-        import io
+    # Multi-size ICO — downscaled from master
+    ico_sizes = [16, 32, 48, 64, 128, 256]
+    pil_images = [
+        master_pil.resize((sz, sz), PILImage.LANCZOS)
+        for sz in ico_sizes
+    ]
 
-        ico_sizes = [16, 32, 48, 64, 128, 256]
-        pil_images = []
-        for sz in ico_sizes:
-            img_qt = render_size(sz)
-            buf = img_qt.bits().tobytes()
-            pil_img = PILImage.frombytes("RGBA", (sz, sz), buf, "raw", "BGRA")
-            pil_images.append(pil_img)
+    ico_path = str(ASSETS / "logo.ico")
+    pil_images[0].save(
+        ico_path, format="ICO",
+        sizes=[(s, s) for s in ico_sizes],
+        append_images=pil_images[1:],
+    )
+    print(f"[+] ICO  -> {ico_path}  ({', '.join(str(s) for s in ico_sizes)}px)")
 
-        ico_path = str(ASSETS / "logo.ico")
-        pil_images[0].save(
-            ico_path, format="ICO",
-            sizes=[(s, s) for s in ico_sizes],
-            append_images=pil_images[1:],
-        )
-        print(f"[+] ICO  -> {ico_path}")
-    except ImportError:
-        print("[!] Pillow not installed — skipping ICO generation.")
-        print("    Run: pip install pillow   then re-run this script.")
-
+except ImportError as e:
+    print(f"[!] Missing dependency: {e}")
+    print("    Run: pip install pillow")
 except Exception as e:
     print(f"[!] Logo generation failed: {e}")
     import traceback; traceback.print_exc()

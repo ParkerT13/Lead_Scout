@@ -1,31 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
 
-  <!-- Background: dark navy, rounded corners -->
-  <rect width="100" height="100" rx="18" ry="18" fill="#0F172A"/>
+  <!-- Background: deep navy, rounded corners -->
+  <rect width="100" height="100" rx="16" ry="16" fill="#0F172A"/>
 
-  <!-- Subtle inner glow ring behind person -->
-  <circle cx="50" cy="50" r="26" fill="#1E3A5F" opacity="0.6"/>
+  <!-- Subtle radial glow behind person -->
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%"   stop-color="#1E40AF" stop-opacity="0.55"/>
+    <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+  </radialGradient>
+  <circle cx="50" cy="50" r="44" fill="url(#glow)"/>
 
-  <!-- Outer target / crosshair ring -->
-  <circle cx="50" cy="50" r="32" fill="none" stroke="#F97316" stroke-width="4.5"/>
+  <!-- Outer target ring — bold -->
+  <circle cx="50" cy="50" r="34" fill="none" stroke="#F97316" stroke-width="5.5"/>
 
-  <!-- Crosshair ticks (4 compass points) -->
-  <line x1="50" y1="10" x2="50" y2="21" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
-  <line x1="50" y1="79" x2="50" y2="90" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
-  <line x1="10" y1="50" x2="21" y2="50" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
-  <line x1="79" y1="50" x2="90" y2="50" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+  <!-- Inner target ring — thinner accent -->
+  <circle cx="50" cy="50" r="26" fill="none" stroke="#F97316" stroke-width="1.8" opacity="0.4"/>
 
-  <!-- Person silhouette — head -->
-  <circle cx="50" cy="42" r="9.5" fill="white"/>
+  <!-- Crosshair ticks — bold and well-spaced -->
+  <line x1="50" y1="4"  x2="50" y2="17" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
+  <line x1="50" y1="83" x2="50" y2="96" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
+  <line x1="4"  y1="50" x2="17" y2="50" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
+  <line x1="83" y1="50" x2="96" y2="50" stroke="#F97316" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Person silhouette — shoulders -->
-  <path d="M30,67 Q30,54 50,54 Q70,54 70,67 Z" fill="white"/>
+  <!-- Person silhouette — head (larger, bold) -->
+  <circle cx="50" cy="40" r="10" fill="#FFFFFF"/>
 
-  <!-- Tiny "pull" arrow at bottom-right corner (data pull metaphor) -->
-  <circle cx="79" cy="79" r="10" fill="#F97316"/>
-  <path d="M75,75 L83,75 L83,83" fill="none" stroke="white"
-        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="75" y1="83" x2="83" y2="75" stroke="white"
-        stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Person silhouette — body / shoulders (clean arc) -->
+  <path d="M28,68 C28,54 72,54 72,68 Z" fill="#FFFFFF"/>
+
+  <!-- Pull-arrow badge — bottom-right, bold and readable -->
+  <circle cx="78" cy="78" r="12" fill="#F97316"/>
+  <!-- Down-right arrow -->
+  <polyline points="72,72 80,72 80,80" fill="none" stroke="#FFFFFF"
+            stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="72" y1="80" x2="80" y2="72" stroke="#FFFFFF"
+        stroke-width="3" stroke-linecap="round"/>
 
 </svg>
