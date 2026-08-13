@@ -11,6 +11,9 @@ Usage:
 
 The generated JSON is excluded from git (contains real email addresses).
 Re-run any time you export a fresh HubSpot contacts list.
+
+pattern2 is stored when a company has a clear second format used by >= 25% of
+contacts (common in post-merger companies or those that migrated email systems).
 """
 
 import csv
@@ -32,19 +35,33 @@ PERSONAL_DOMAINS = {
     "me.com", "aol.com", "protonmail.com", "live.com", "msn.com", "ymail.com",
 }
 
+def _clean(name: str) -> str:
+    name = name.strip().lower().split(",")[0].strip()
+    name = re.sub(r"\b(phd|mba|pe|ms|bs|pg|cpg|jr|sr|ii|iii|iv)\b\.?", "", name, flags=re.I)
+    name = name.replace("-", "")
+    return re.sub(r"[^a-z]", "", name)
+
 def infer_pattern(fn: str, ln: str, email: str) -> str | None:
-    local = re.sub(r"[^a-z.]", "", email.split("@")[0].lower())
-    fi = fn[0] if fn else ""
-    li = ln[0] if ln else ""
+    fn = _clean(fn)
+    ln = _clean(ln)
+    if not fn or not ln:
+        return None
+    local = re.sub(r"[^a-z._\-]", "", email.split("@")[0].lower())
+    fi = fn[0]
+    li = ln[0]
     mapping = {
-        f"{fn}.{ln}": "first.last",
-        f"{fi}.{ln}": "f.last",
-        f"{fn}.{li}": "first.l",
-        f"{fi}{ln}":  "flast",
-        f"{fn}{ln}":  "firstlast",
-        f"{fn}":      "first",
-        f"{ln}.{fn}": "last.first",
-        f"{li}{fn}":  "lfirst",
+        f"{fn}.{ln}":  "first.last",
+        f"{fi}.{ln}":  "f.last",
+        f"{fn}.{li}":  "first.l",
+        f"{fi}{ln}":   "flast",
+        f"{fn}{ln}":   "firstlast",
+        f"{fn}":       "first",
+        f"{ln}.{fn}":  "last.first",
+        f"{li}{fn}":   "lfirst",
+        f"{fn}_{ln}":  "first_last",
+        f"{fn}-{ln}":  "first-last",
+        f"{ln}{fi}":   "lastf",
+        f"{ln}":       "last",
     }
     return mapping.get(local)
 
@@ -59,12 +76,14 @@ for r in rows:
     domain = email.split("@")[-1]
     if domain in PERSONAL_DOMAINS or domain.endswith(".edu") or domain.endswith(".gov"):
         continue
-    fn = r.get("first_name", "").strip().lower()
-    ln = r.get("last_name", "").strip().lower()
+    fn = r.get("first_name", "").strip()
+    ln = r.get("last_name", "").strip()
     if fn and ln:
         by_domain[domain].append((fn, ln, email))
 
 kb = {}
+dual_pattern_count = 0
+
 for domain, contacts in by_domain.items():
     patterns, samples = [], []
     for fn, ln, em in contacts:
@@ -74,21 +93,40 @@ for domain, contacts in by_domain.items():
             samples.append(em)
     if not patterns:
         continue
-    counts  = Counter(patterns)
-    top, n  = counts.most_common(1)[0]
-    total   = len(patterns)
-    conf    = round(n / total, 2)
-    if conf >= 0.7:
-        kb[domain] = {
-            "pattern":      top,
-            "confidence":   conf,
-            "sample_count": total,
-            "samples":      samples[:3],
-        }
+
+    counts = Counter(patterns)
+    total  = len(patterns)
+    top2   = counts.most_common(2)
+    top, n = top2[0]
+    conf   = round(n / total, 2)
+
+    if conf < 0.65:
+        continue  # too ambiguous even for primary pattern
+
+    entry = {
+        "pattern":      top,
+        "confidence":   conf,
+        "sample_count": total,
+        "samples":      samples[:3],
+    }
+
+    # Store secondary pattern if it accounts for >= 25% of contacts
+    # (genuine dual-format company — post-merger, system migration, etc.)
+    if len(top2) > 1:
+        p2, n2 = top2[1]
+        conf2  = round(n2 / total, 2)
+        if conf2 >= 0.25:
+            entry["pattern2"]    = p2
+            entry["confidence2"] = conf2
+            dual_pattern_count  += 1
+
+    kb[domain] = entry
 
 OUT.write_text(json.dumps(kb, indent=2, sort_keys=True), encoding="utf-8")
+
 pat_dist = Counter(v["pattern"] for v in kb.values())
-print(f"Written {len(kb)} domain patterns to {OUT.name}")
-print("Pattern distribution:")
+print(f"Written {len(kb)} domain entries to {OUT.name}")
+print(f"  Dual-pattern domains: {dual_pattern_count}")
+print("Pattern distribution (primary):")
 for p, n in pat_dist.most_common():
     print(f"  {p}: {n}")

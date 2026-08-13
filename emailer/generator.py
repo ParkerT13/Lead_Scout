@@ -1,9 +1,14 @@
 """
 Generate email address candidates for a person given their name, domain,
-and optionally a detected pattern.
+and optionally detected patterns.
 
-If pattern is known  → return [pattern_email, first.last as backup]
-If pattern unknown   → return all common variants for SMTP testing
+Candidate order is ranked by real-world O&G frequency (2,978 contacts / 941 domains):
+  first.last 38.9% | flast 37.4% | first_last 10.9% | first 7.4%
+  firstlast 2.4%   | lastf 1.4%  | last 0.7%        | f.last 0.6%
+
+If pattern is known  -> pattern email first, then rest in frequency order
+If two patterns known -> both pattern emails at top, maximizing hit on split-format companies
+If pattern unknown   -> all 8 variants in frequency order for SMTP testing
 """
 
 import re
@@ -14,9 +19,11 @@ def generate_candidates(
     last: str,
     domain: str,
     pattern: str | None = None,
+    pattern2: str | None = None,
 ) -> list[str]:
     """
     Return a list of candidate email addresses, most likely first.
+    pattern2 is used for companies known to use two email formats simultaneously.
     Deduplicates automatically.
     """
     f = _clean(first)
@@ -28,31 +35,29 @@ def generate_candidates(
     fi = f[0]   # first initial
     li = l[0]   # last initial
 
-    # All candidate local-parts in preference order (ranked by real-world frequency
-    # across 941 O&G domains / 2,978 contacts from HubSpot KB):
-    #   flast 42%  |  first.last 31%  |  first 20%  |  firstlast 6%
-    #   f.last 1.4%  |  first.l 0.5%  |  first_last ~rare  |  last ~rare
-    # last.first and lfirst were removed — zero occurrences in O&G data.
+    # All candidate local-parts in frequency order (O&G HubSpot data, by contact count)
     variants = [
-        f"{fi}{l}",     # flast       — 42% of O&G domains
-        f"{f}.{l}",     # first.last  — 31%
-        f"{f}",         # first       — 20% (boutique/small firms)
-        f"{f}{l}",      # firstlast   — 6%
-        f"{fi}.{l}",    # f.last      — 1.4%
-        f"{f}.{li}",    # first.l     — 0.5%
-        f"{f}_{l}",     # first_last  — older IT/Microsoft-provisioned systems
-        f"{l}",         # last        — rare, European/international firms
+        f"{fi}{l}",     # flast        — 37.4%
+        f"{f}.{l}",     # first.last   — 38.9%
+        f"{f}_{l}",     # first_last   — 10.9% (Microsoft/IT-provisioned systems)
+        f"{f}",         # first        — 7.4%  (boutique/small firms)
+        f"{f}{l}",      # firstlast    — 2.4%
+        f"{l}{fi}",     # lastf        — 1.4%  (bishopm style)
+        f"{l}",         # last         — 0.7%
+        f"{fi}.{l}",    # f.last       — 0.6%
     ]
 
-    if pattern:
-        preferred = _apply_pattern(pattern, f, l, fi, li)
-        if preferred:
-            # Put detected pattern first, then first.last, then rest
-            head = [preferred]
-            if f"{f}.{l}" != preferred:
-                head.append(f"{f}.{l}")
-            tail = [v for v in variants if v not in head]
-            variants = head + tail
+    # Front-load known patterns — both if company uses two formats
+    head = []
+    for pat in (pattern, pattern2):
+        if pat:
+            preferred = _apply_pattern(pat, f, l, fi, li)
+            if preferred and preferred not in head:
+                head.append(preferred)
+
+    if head:
+        tail = [v for v in variants if v not in head]
+        variants = head + tail
 
     # Deduplicate preserving order, then append domain
     seen: set[str] = set()
@@ -77,7 +82,9 @@ def _apply_pattern(pattern: str, f: str, l: str, fi: str, li: str) -> str | None
         "lfirst":      f"{li}{f}",
         "lastfirst":   f"{l}{f}",
         "first_last":  f"{f}_{l}",
+        "first-last":  f"{f}-{l}",
         "last":        f"{l}",
+        "lastf":       f"{l}{fi}",
     }
     return mapping.get(pattern)
 
@@ -90,7 +97,7 @@ def _clean(name: str) -> str:
     name = re.sub(
         r"\b(phd|mba|pe|ms|bs|pg|cpg|jr|sr|ii|iii|iv)\b\.?", "", name, flags=re.IGNORECASE
     )
-    # Collapse hyphenated names: mary-kate → marykate
+    # Collapse hyphenated names: mary-kate -> marykate
     name = name.replace("-", "")
     # Keep only lowercase letters
     name = re.sub(r"[^a-z]", "", name)

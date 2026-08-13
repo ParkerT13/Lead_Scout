@@ -48,6 +48,11 @@ def get_kb_samples(domain: str) -> list[str]:
     """Return up to 3 sample emails from the HubSpot KB for a domain (for reference/debugging)."""
     return _load_kb().get(domain, {}).get("samples", [])
 
+
+def get_kb_pattern2(domain: str) -> str | None:
+    """Return secondary pattern for domains with two active email formats, or None."""
+    return _load_kb().get(domain, {}).get("pattern2")
+
 logger = logging.getLogger(__name__)
 
 _EMAIL_RE = re.compile(r"\b([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\b")
@@ -89,7 +94,9 @@ _PATTERN_MAP = {
     "lfirst":         "lfirst",
     "l.first":        "lfirst",
     "lastfirst":      "last.first",
-    "first_last":     "first.last",
+    "first_last":     "first_last",
+    "first-last":     "first-last",
+    "lastf":          "lastf",
     "f_last":         "flast",
     # emailformat.com template tokens
     "{first}.{last}": "first.last",
@@ -302,6 +309,10 @@ def _match_from_name(email: str, name: str) -> str | None:
         f"{first}":        "first",
         f"{last}.{first}": "last.first",
         f"{li}{first}":    "lfirst",
+        f"{first}_{last}": "first_last",
+        f"{first}-{last}": "first-last",
+        f"{last}{fi}":     "lastf",
+        f"{last}":         "last",
     }
     return mapping.get(local)
 

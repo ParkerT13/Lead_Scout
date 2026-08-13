@@ -23,7 +23,7 @@ from collections import defaultdict
 from PySide6.QtCore import QThread, Signal
 
 from emailer.domain_finder import find_domain
-from emailer.pattern_detector import detect_pattern
+from emailer.pattern_detector import detect_pattern, get_kb_pattern2
 from emailer.generator import generate_candidates
 from emailer.smtp_verifier import get_mx, port25_available
 from emailer.email_verifier import verify_email as _verify_email, get_mx_records, check_catch_all
@@ -112,16 +112,19 @@ class EmailWorker(QThread):
         if cached and cached.get("domain") == domain and cached.get("pattern") is not None:
             pattern        = cached["pattern"]
             pattern_source = cached.get("pattern_source", "cache")
+            pattern2       = cached.get("pattern2")
         else:
             pattern, pattern_source = detect_pattern(domain)
-            cache_put(company, domain, pattern, pattern_source)
+            pattern2 = get_kb_pattern2(domain)
+            cache_put(company, domain, pattern, pattern_source, pattern2)
 
         if pattern:
             confidence = {"hubspot": "HubSpot KB", "scraped": "from website",
                           "emailformat": "emailformat.com", "ddg": "via search",
                           "smtp-verified": "SMTP confirmed",
                           "manual": "manual"}.get(pattern_source, pattern_source)
-            self.company_status.emit(company, f"Pattern: {pattern} ({confidence})")
+            p2_msg = f" + {pattern2}" if pattern2 else ""
+            self.company_status.emit(company, f"Pattern: {pattern}{p2_msg} ({confidence})")
         else:
             self.company_status.emit(company, "Pattern unknown — will probe formats")
 
@@ -143,7 +146,7 @@ class EmailWorker(QThread):
                 break
 
             first, last, name = self._name_parts(contact)
-            candidates = generate_candidates(first, last, domain, pattern)
+            candidates = generate_candidates(first, last, domain, pattern, pattern2)
             self.status_update.emit(f"[{company}] {name} — {len(candidates)} candidate(s)")
 
             email  = candidates[0] if candidates else ""
@@ -252,5 +255,9 @@ def _local_to_pattern(local: str, first: str, last: str) -> str:
         f"{first}":        "first",
         f"{last}.{first}": "last.first",
         f"{li}{first}":    "lfirst",
+        f"{first}_{last}": "first_last",
+        f"{first}-{last}": "first-last",
+        f"{last}{fi}":     "lastf",
+        f"{last}":         "last",
     }
     return mapping.get(local, local)

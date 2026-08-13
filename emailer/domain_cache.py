@@ -33,20 +33,27 @@ def _save(data: dict):
 
 
 def get(company: str) -> dict | None:
-    """Return cached entry for company or None. Keys: domain, pattern, pattern_source."""
+    """Return cached entry for company or None. Keys: domain, pattern, pattern_source, pattern2 (optional)."""
     return _load().get(company.lower().strip())
 
 
-def put(company: str, domain: str, pattern: str | None, pattern_source: str):
-    """Save a company's domain and pattern to the cache."""
+def put(company: str, domain: str, pattern: str | None, pattern_source: str,
+        pattern2: str | None = None):
+    """Save a company's domain and pattern(s) to the cache.
+    pattern2 is stored when a company is known to use two email formats simultaneously.
+    """
     data = _load()
-    data[company.lower().strip()] = {
+    entry = {
         "domain":         domain,
         "pattern":        pattern,
         "pattern_source": pattern_source,
     }
+    if pattern2:
+        entry["pattern2"] = pattern2
+    data[company.lower().strip()] = entry
     _save(data)
-    logger.info("Cached %s -> %s / %s (%s)", company, domain, pattern, pattern_source)
+    p2_msg = f" + {pattern2}" if pattern2 else ""
+    logger.info("Cached %s -> %s / %s%s (%s)", company, domain, pattern, p2_msg, pattern_source)
 
 
 def all_entries() -> dict:
