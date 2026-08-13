@@ -1081,14 +1081,16 @@ class MainWindow(QMainWindow):
         filter_layout = QVBoxLayout(filter_box)
         self._crm_status_checks: dict[str, QCheckBox] = {}
         statuses = [
-            ("verified",            "Verified (SMTP confirmed)",    True),
-            ("catch-all-confirmed", "Catch-all confirmed",          True),
-            ("catch-all-risky",     "Catch-all risky",              False),
-            ("unknown",             "Unknown (port 25 blocked)",    False),
-            ("best-guess",          "Best-guess (no SMTP)",         True),
-            ("pattern-confirmed",   "Pattern confirmed (scraped)",  True),
-            ("pattern-ddg",         "Pattern via DDG",              True),
-            ("_drop",               "Show dropped (no domain/MX/error)", False),
+            ("verified",            "Verified (SMTP / API confirmed)",  True),
+            ("catch-all-confirmed", "Catch-all confirmed",              True),
+            ("catch-all-risky",     "Catch-all risky",                  False),
+            ("unverified",          "Unverified (port 25 blocked)",      True),
+            ("bounced",             "Bounced — use Re-verify before export", True),
+            ("unknown",             "Unknown",                          False),
+            ("best-guess",          "Best-guess (no SMTP)",             True),
+            ("pattern-confirmed",   "Pattern confirmed (scraped)",      True),
+            ("pattern-ddg",         "Pattern via DDG",                  True),
+            ("_drop",               "Show no-domain / no-MX / errors",  False),
         ]
         for key, label, default in statuses:
             cb = QCheckBox(label)
@@ -1202,7 +1204,9 @@ class MainWindow(QMainWindow):
     def _crm_filtered_contacts(self) -> list[dict]:
         contacts = self._crm_source_contacts()
         allowed_statuses = {k for k, cb in self._crm_status_checks.items() if cb.isChecked()}
-        show_dropped = "_drop" in allowed_statuses
+        show_dropped  = "_drop"    in allowed_statuses
+        show_bounced  = "bounced"  in allowed_statuses
+        show_unverified = "unverified" in allowed_statuses
         allowed_statuses.discard("_drop")
 
         result = []
@@ -1211,10 +1215,18 @@ class MainWindow(QMainWindow):
             status = c.get("email_status", "")
             email  = c.get("email", "").strip().lower()
 
-            # Status filter
-            if status in DROP_STATUSES and not show_dropped:
-                continue
-            if status not in DROP_STATUSES and status not in allowed_statuses:
+            # Status filter — bounced and unverified have explicit checkboxes
+            # so they bypass the generic DROP_STATUSES gate when ticked
+            if status == "bounced":
+                if not show_bounced and not show_dropped:
+                    continue
+            elif status == "unverified":
+                if not show_unverified and not show_dropped:
+                    continue
+            elif status in DROP_STATUSES:
+                if not show_dropped:
+                    continue
+            elif status not in allowed_statuses:
                 continue
 
             # Require email
