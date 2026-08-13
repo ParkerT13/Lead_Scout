@@ -29,6 +29,7 @@ from emailer.smtp_verifier import get_mx, port25_available
 from emailer.email_verifier import verify_email as _verify_email, get_mx_records, check_catch_all
 from emailer.domain_cache import get as cache_get, put as cache_put
 from emailer.bounce_tracker import is_bounced
+from emailer.api_verifier import verify_via_api
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +53,12 @@ class EmailWorker(QThread):
     port25_blocked   = Signal()
     all_done         = Signal()
 
-    def __init__(self, contacts: list[dict]):
+    def __init__(self, contacts: list[dict], mv_api_key: str = ""):
         super().__init__()
-        self._contacts  = contacts
-        self._stop      = False
-        self._port25_ok = True
+        self._contacts   = contacts
+        self._stop       = False
+        self._port25_ok  = True
+        self._mv_api_key = mv_api_key.strip()
 
     def run(self):
         self._port25_ok = port25_available()
@@ -155,6 +157,7 @@ class EmailWorker(QThread):
             status = "unknown"
 
             if self._port25_ok:
+                # SMTP verification — direct port 25 probe
                 for candidate in candidates:
                     r = _verify_email(candidate)
                     self.status_update.emit(f"  -> {candidate} [{r['status']}]")
@@ -166,10 +169,25 @@ class EmailWorker(QThread):
                         break
                     if r["status"] == "bounced" and status == "unknown":
                         status = "bounced"
+            elif self._mv_api_key:
+                # Port 25 blocked — use MillionVerifier API instead
+                for candidate in candidates:
+                    r = verify_via_api(candidate, self._mv_api_key)
+                    self.status_update.emit(f"  -> {candidate} [{r['status']}] (API)")
+                    if r["status"] == "verified":
+                        email, status = candidate, "verified"
+                        break
+                    if r["status"] == "catch-all-risky":
+                        status = "catch-all-risky"
+                        break
+                    if r["status"] == "bounced" and status == "unknown":
+                        status = "bounced"
+                    if r["status"] == "unknown":
+                        break  # API unknown means credits gone or unresolvable — don't burn more
             else:
-                # Port 25 blocked — skip SMTP, use pattern-preferred candidate as-is
+                # Port 25 blocked, no API key — use pattern-preferred candidate as-is
                 status = "unverified"
-                self.status_update.emit(f"  -> {email} [unverified — port 25 blocked]")
+                self.status_update.emit(f"  -> {email} [unverified — port 25 blocked, no API key]")
 
             # Upgrade catch-all-risky if pattern is reliably sourced
             if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual"):

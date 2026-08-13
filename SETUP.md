@@ -69,7 +69,9 @@ On first launch a setup wizard walks you through three things:
 - `catch-all-risky` — domain accepts all mail and format was guessed (red)
 - `unverified` — port 25 is blocked on your network; email is pattern-based but not SMTP-tested
 
-> **If most emails show "unverified":** Your office network blocks outbound port 25 (very common). Use **Generate Emails.bat** instead — drag your contacts CSV onto it and it generates pattern-based emails instantly. Then run them through **MillionVerifier** or **NeverBounce** (both have free tiers) to verify before sending.
+> **If most emails show "unverified":** Your office network blocks outbound port 25 (very common). Two options:
+> - **Best:** Add a MillionVerifier API key in Settings (millionverifier.com — ~$0.001/email, $10 gets you 10,000 checks). The app automatically routes verification through their servers. One key works for the whole team.
+> - **Alternative:** Use **Generate Emails.bat** to export contacts, then paste the email list into MillionVerifier or NeverBounce to bulk-verify externally.
 
 ---
 
