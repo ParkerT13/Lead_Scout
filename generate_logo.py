@@ -107,20 +107,15 @@ try:
     png_512.save(png_path, "PNG")
     print(f"[+] PNG  -> {png_path}  (512x512)")
 
-    # Multi-size ICO — downscaled from master
-    ico_sizes = [16, 32, 48, 64, 128, 256]
-    pil_images = [
-        master_pil.resize((sz, sz), PILImage.LANCZOS)
-        for sz in ico_sizes
-    ]
+    # Multi-size ICO — let Pillow resize from the 256px image using the sizes= param.
+    # Using sizes= on a single image is the only reliable way to embed all resolutions;
+    # append_images= silently drops extras in most Pillow builds.
+    ico_sizes = [(16,16), (32,32), (48,48), (64,64), (128,128), (256,256)]
+    img256 = master_pil.resize((256, 256), PILImage.LANCZOS)
 
     ico_path = str(ASSETS / "logo.ico")
-    pil_images[0].save(
-        ico_path, format="ICO",
-        sizes=[(s, s) for s in ico_sizes],
-        append_images=pil_images[1:],
-    )
-    print(f"[+] ICO  -> {ico_path}  ({', '.join(str(s) for s in ico_sizes)}px)")
+    img256.save(ico_path, format="ICO", sizes=ico_sizes)
+    print(f"[+] ICO  -> {ico_path}  (16/32/48/64/128/256px)")
 
 except ImportError as e:
     print(f"[!] Missing dependency: {e}")
