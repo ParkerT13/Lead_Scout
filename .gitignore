@@ -9,6 +9,6 @@ venv/
 # hubspot_knowledge_public.json is committed (sanitized — no real emails)
 emailer/hubspot_knowledge.json
 
-# API credentials — fill in credentials.json.example and rename to credentials.json
-# Share this file directly with colleagues; never commit it
+# API credentials — share directly with colleagues, never commit
 credentials.json
+credentials.json.example

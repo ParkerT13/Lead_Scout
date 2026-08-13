@@ -348,8 +348,14 @@ class MainWindow(QMainWindow):
             self._settings.setdefault(k, v)
         # credentials.json in app folder — shared by Parker, overrides per-machine settings
         # for API keys so colleagues don't need their own accounts
-        _creds_path = Path(__file__).parent.parent / "credentials.json"
-        if _creds_path.exists():
+        _creds_path = next(
+            (p for p in (
+                Path(__file__).parent.parent / "credentials.json",
+                Path(__file__).parent.parent / "credentials.json.example",
+            ) if p.exists()),
+            None,
+        )
+        if _creds_path:
             try:
                 creds = json.loads(_creds_path.read_text(encoding="utf-8"))
                 for key in ("nb_api_key", "reoon_api_key"):
