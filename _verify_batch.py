@@ -28,6 +28,10 @@ rows = list(csv.DictReader(INPUT.open(encoding="utf-8")))
 total = len(rows)
 print(f"Verifying {total} contacts...\n")
 
+if not rows:
+    print("No contacts found in file.")
+    sys.exit(0)
+
 fieldnames = list(rows[0].keys())
 if "emp_status" not in fieldnames:
     fieldnames.append("emp_status")

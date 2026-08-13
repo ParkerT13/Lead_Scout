@@ -31,14 +31,21 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-_KB_PATH = Path(__file__).parent / "hubspot_knowledge.json"
+_KB_PATH        = Path(__file__).parent / "hubspot_knowledge.json"
+_KB_PUBLIC_PATH = Path(__file__).parent / "hubspot_knowledge_public.json"
 _KB: dict | None = None
 
 def _load_kb() -> dict:
     global _KB
     if _KB is None:
         try:
-            _KB = json.loads(_KB_PATH.read_text(encoding="utf-8")) if _KB_PATH.exists() else {}
+            # Personal KB (with real samples) takes priority; fall back to shared public KB
+            if _KB_PATH.exists():
+                _KB = json.loads(_KB_PATH.read_text(encoding="utf-8"))
+            elif _KB_PUBLIC_PATH.exists():
+                _KB = json.loads(_KB_PUBLIC_PATH.read_text(encoding="utf-8"))
+            else:
+                _KB = {}
         except Exception:
             _KB = {}
     return _KB

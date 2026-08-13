@@ -6,4 +6,5 @@ venv/
 .venv/
 
 # HubSpot knowledge base — contains real email addresses, generated locally
+# hubspot_knowledge_public.json is committed (sanitized — no real emails)
 emailer/hubspot_knowledge.json

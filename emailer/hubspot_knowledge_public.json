@@ -1,0 +1,4912 @@
+{
+  "3doil.com.au": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "3roc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "458energy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "4cast.io": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "4jresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "aaoperating.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "abaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "abhengineeringinc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "abraxaspetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "aceenergyllc.org": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "act-geo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "activeearth.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "actusveritas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "adaptivemal.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "admiralpermian.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "adnoc.ae": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "adterra.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 10
+  },
+  "adv-res.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ae-cap.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "aec-denver.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 12
+  },
+  "aethonenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "afropane.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ageophysics.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "ageoservice.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "ageronllc.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "agnicoeagle.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "agtgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "aimgeoanalytics.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "airmail.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ajlenergy.net": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "akdpsi.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "akgcompanies.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "alliancepetro.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "alliedenergy2.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "almaenergy.net": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "alphasonicamericas.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "alsglobal.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 4
+  },
+  "alta-resources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "alvopetro.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "amicuspetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "amigosenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "amuletexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "amwes.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "anboundenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "anchor-oil.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "andersongeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "andersonoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "andersonoilltd.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "anteroresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 22
+  },
+  "antorageophysical.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "anu-resources.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "aoakse.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "apachecorp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 67
+  },
+  "apegnb.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "apexgeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "apexintl.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "apexnishati.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "apexpe.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "apexsubsurface.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "apmoller.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "apykegsenergies.co.tz": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "aramco.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 15
+  },
+  "aramcoamericas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "arar.com.tr": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "arenaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "arkkeng.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "armourenergy.com.au": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "armstrongoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "arringtonoil.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "arrowenergy.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "arsenalresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 7
+  },
+  "ascentresources.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 9
+  },
+  "aspectmgmtcorp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "aspentech.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "astraenergy.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "aterrasolutions.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "atha.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 17
+  },
+  "athaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "atkinsrealis.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "atlasoperating.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "atlassand.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "att.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "auburnenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "aureagroupog.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "aurorageosciences.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "australisoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "auterraenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "axiageo.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "azimuthenergy.us": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "b-geo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "bacoaluminium.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "badgeroil.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "bahwancybertek.com": {
+    "confidence": 1.0,
+    "pattern": "first.l",
+    "sample_count": 1
+  },
+  "bairdusa.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "bajaoil.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "bakercsi.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "bakerhughes.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 6
+  },
+  "ballardexpl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "barageo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "barrowshaver.com": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "flast",
+    "pattern2": "firstlast",
+    "sample_count": 3
+  },
+  "bayless-cos.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bayswater.us": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "baywest.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bc-er.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 6
+  },
+  "bdebdp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "beaconoffshore.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 8
+  },
+  "belloy.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "bellsouth.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "beryloil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bgcengineering.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 8
+  },
+  "bhawkenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "bhlconsulting.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "bhp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "bhpbilliton.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "birchlcliffenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "birchresources.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "bjenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "bjv-3ddesign.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "bkvcorp.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 2
+  },
+  "blackbeardoperating.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "blackdogexp.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "blackhawkenergy.net": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "blackhillenergyllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "blackmtn.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 4
+  },
+  "blackpoolenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bluecrestenergy.com": {
+    "confidence": 0.83,
+    "pattern": "first.last",
+    "sample_count": 6
+  },
+  "bluefrogconsulting.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bluerockep.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bluware.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 22
+  },
+  "boem.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 13
+  },
+  "boomtownoil.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "bowersoxexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "bp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 33
+  },
+  "bpx.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 16
+  },
+  "brazoriaop.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "bridgeport.net.au": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "browningoil.com": {
+    "confidence": 1.0,
+    "pattern": "first.l",
+    "sample_count": 1
+  },
+  "brtenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "btaoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "btmadvisors.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "buoyancy.works": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "burnettoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "burnsmcd.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "bwenergy.no": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "bxmgeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "c2earth.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "caerusoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "caimansubsurface.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "calisia.co.uk": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "calitso.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "calvalleycyprus.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cameco.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 4
+  },
+  "cameron.slb.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "canacolenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 14
+  },
+  "canada.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "cansco-cti.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "capgemini.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "carbonalpha.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "casadenail.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "caspianic.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 4
+  },
+  "catamountexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "catenares.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cathay.fr": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "catheart.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cathexis.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cathexisoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cazapetro.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "cceok.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ce2ok.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "cegageos.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "celticex.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "centraenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "centralpetroleum.com.au": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "centurylink.net": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "cgi.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "chevron.com": {
+    "confidence": 0.85,
+    "pattern": "flast",
+    "sample_count": 78
+  },
+  "chk.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 72
+  },
+  "chordenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "chpk.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ciageo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "civil.cujae.edu.cu": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "civiresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "claymoreexpl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cleanrockenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "clifton.ca": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 1
+  },
+  "clr.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 17
+  },
+  "cmcghg.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 4
+  },
+  "cmgseismicsolutions.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "cmlexp.com": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 4
+  },
+  "cmmex.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "cnlopb.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "cnx.com": {
+    "confidence": 0.83,
+    "pattern": "firstlast",
+    "sample_count": 6
+  },
+  "coastlinenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cobra.com.co": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cobraogc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "coelacanth.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cogc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 15
+  },
+  "collarini.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "collierconsulting.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "colliergeophysics.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 6
+  },
+  "columbineco.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "cometridge.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "compgeoinc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "comstockresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 8
+  },
+  "condorenergies.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "connacheroil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "connollygeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "conocophilips.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "conocophillips.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 11
+  },
+  "contractor.coregeologic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cop.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "cordax.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "coreenergyllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "coregeo.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "coregeologic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "cornerstone-pe.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cornerstonepetro.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "corva.ai": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "coterra.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 52
+  },
+  "cplatina.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "crescentdrilling.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "crescentgeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "crestwynd.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "cronegeophysics.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "crossqi.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "crownquest.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "csoginc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "curtin.edu.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "cwresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "cxsltd.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "dahrouge.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 3
+  },
+  "dantoddgeo.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "davisgeological.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "dayborogeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "daylightpetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "dbxco.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "dddexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "de-energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "debeersgroup.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "deckerexpl.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "dedicatted.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "deeca.vic.gov.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "deepbluewater.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "deeprock-energy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "delekus.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "demac.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "denisonmines.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "depermian.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "derl.org": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "detring.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "dfab.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "dgbes.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "dgoc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "diamonbackresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "diamondbackenergy.com": {
+    "confidence": 0.97,
+    "pattern": "flast",
+    "sample_count": 38
+  },
+  "diasgeo.com": {
+    "confidence": 0.83,
+    "pattern": "first.last",
+    "sample_count": 6
+  },
+  "diggerenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "digitalformation.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "discoverep.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "discovergeological.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "discoverynr.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "ditc.co.za": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "div.energy": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 19
+  },
+  "dracoenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "drbgeological.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "driftwoodenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "drillinginfo.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "droneservicestx.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "dunkenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "dunnexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 13
+  },
+  "dvn.com": {
+    "confidence": 0.99,
+    "pattern": "first.last",
+    "sample_count": 151
+  },
+  "dwl-usa.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "dynprod.net": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "e3lithium.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "eagleog.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "eagleridgeenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "eagleriverea.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "earthsciences.nz": {
+    "confidence": 0.9,
+    "pattern": "first.last",
+    "sample_count": 10
+  },
+  "earthstoneenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "eastlandoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "ebresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "echelonagc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "echo-group.net": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 2
+  },
+  "ecodev.vic.gov.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ecopetrol-america.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ecopetrol.com.co": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "edsventure.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "eeronline.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 19
+  },
+  "eglresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "elementpetro.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "elevationres.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "elpaso.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "eltirus.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "emcgeophysics.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "emeraldenergyllc.com": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "first.last",
+    "pattern2": "first_last",
+    "sample_count": 3
+  },
+  "empirepetrocorp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "empyreanenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "enac.co.tz": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 1
+  },
+  "endeavorgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "enduranceenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "enduranceresourcesllc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "enercapita.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "energeo.com.au": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "energyoperatingcorp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "enervest.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "englobecorp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "enh.co.mz": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 5
+  },
+  "eni.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "enlightengeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "enpower-us.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ensignnr.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "eogresources.com": {
+    "confidence": 0.99,
+    "pattern": "first_last",
+    "sample_count": 142
+  },
+  "eogresrouces.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 4
+  },
+  "epochconsultingllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "eqt.com": {
+    "confidence": 0.75,
+    "confidence2": 0.25,
+    "pattern": "flast",
+    "pattern2": "first.last",
+    "sample_count": 16
+  },
+  "es.iitr.ac.in": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "esgsolutions.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "etoco.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "euramenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "euro-khan.com": {
+    "confidence": 1.0,
+    "pattern": "first.l",
+    "sample_count": 1
+  },
+  "evansgeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "evervest.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 8
+  },
+  "excoresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "exhibitorsdataset.live": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "exhibitorupdates.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "exirominerals.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "exlog.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "expertenresearch.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "explorergroup1.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "expoenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "extechconsulting.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "exxonmobil.com": {
+    "confidence": 0.98,
+    "pattern": "first.last",
+    "sample_count": 63
+  },
+  "ezgloballink.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "fairfieldgeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fairwayresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "faradaycopper.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fastmail.us": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fathom.video": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "fdlenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "ferrelloil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ferrogirate.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "fidalgo-partners.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "fieldgeoservices.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "finalfrontiers.net": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "firstflatironea.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "firsthelium.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fivese.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "flamingoseismic.com": {
+    "confidence": 0.75,
+    "confidence2": 0.25,
+    "pattern": "first",
+    "pattern2": "flast",
+    "sample_count": 4
+  },
+  "flash.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "flatcreekresources.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "flinthillconsulting.net": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "flywheelresources.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fmellc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "foranmining.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "forgenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "forl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fourpointenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "fracgeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "frazierexpl.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "freedomenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "frioresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "fronteraenergy.ca": {
+    "confidence": 0.86,
+    "pattern": "flast",
+    "sample_count": 7
+  },
+  "frontierml.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "frontrange-ep.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "frontstreetenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "fuegoexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "fugro.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "gaffney-cline.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 13
+  },
+  "galilee-energy.com.au": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "gandfoil.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "gardneroilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "gatewayexp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "gemtec.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "generationexploration.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "geo-energie.ch": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "geo3group.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "geoadvisors.org": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geocoin.co": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "geocomputing.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "geocorr.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geodatasolutions.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "geoenergy-eg.com": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "first.last",
+    "pattern2": "f.last",
+    "sample_count": 3
+  },
+  "geoenergy.co": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "geoexpro.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geofocusllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "geoglobal.in": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geoilenergy.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 4
+  },
+  "geoinsights.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "geologicaldata.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "geolumina.ai": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "geomadaenergypartners.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geomata.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "geomaticworld.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 1
+  },
+  "geonow.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "geopetrollc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geophysicaltechnology.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geophysics.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geophysicsgpr.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geosales.geosoftware.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geoscape.us": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geoscience-services.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "geosteeringvision.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "geostocksandia.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "geotech.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "ghd.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "gmail.co": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "gnb.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "gng-skills.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "gns.cri.nz": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 2
+  },
+  "goexplore.consulting": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "goolsbyfinley.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "gosecure.net": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "gov.bm": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "gov.nl.ca": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "grandecom.net": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "grandviewres.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "greatnortherngas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "greencenturyresources.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "greenenergy.ng": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "greenflameresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "grenadierenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "greylockenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 9
+  },
+  "greystone.bz": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "groundtruthexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "gscmt.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "guidestoneenergy.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "gulfportenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 23
+  },
+  "gulfslope.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "gwdc.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "h2obridge.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "hadinc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "hal-pc.org": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "halliburton.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "haloexp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "hammanoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "hansolresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "hardinintl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "harveyrockphysics.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "hatch.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "hawkwoodenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "hayabusaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "headington.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "headwaterexp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "heirsenergies.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "henryresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "heritageenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "herradurapetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "hess.com": {
+    "confidence": 0.83,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "hexonenergy.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "hiberniaresources.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "hilcorp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "hillgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "hisecompanies.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "hogresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "horizon-resources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "horstsubsurface.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "houstonenergyinc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "hs-geo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "hudbayminerals.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "hunterenergycorp.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "huntoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "hurdenterprises.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "hydrostrat.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "i-og.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "icarusog.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "idatr.mx": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "flast",
+    "pattern2": "first.last",
+    "sample_count": 3
+  },
+  "igeollc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "igii-llc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "iiserpune.ac.in": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "iitb.ac.in": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ilexenergycorp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "impactapplications.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "impacxs.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 2
+  },
+  "imperial.ac.uk": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 2
+  },
+  "in3dgeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "indepthgeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "inexs.com": {
+    "confidence": 0.67,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "infinitynr.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 19
+  },
+  "inflectionenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 6
+  },
+  "inpex.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "inplayoil.com": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 3
+  },
+  "insperity.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "integral-resources.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "integrityinsitu.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "inter-rock-ca.com": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 1
+  },
+  "interactive-es.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "intl.cnoocltd.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "irons-assoc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "irt-inc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "islandenergyllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "jakeoil.us": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "jamexinc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "japex.co.jp": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "jaybeeoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "jdmollard.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "jettaoperating.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "jhiassociates.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "jointresources.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 6
+  },
+  "juneauexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "justissoil.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "jw.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "kalerenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "kareenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "karveenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "katalystdm.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "kavenex.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "keyandwalsh.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "kfoc.net": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "killamco.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "kinleyexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "kiwienergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "knoxenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "kosmosenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "kpmg.ca": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "krakenoil.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "krakenrobotics.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "ktc.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "ktgllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "labayexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "lakesidenrg.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "landseismicnoise.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "laramideenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "laredoenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "lario.net": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "laureloakenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "laurentian.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "legendcapital.llc": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "legendsexpl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "libertyresourcesllc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "limerockresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 9
+  },
+  "lithoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "lngenergygroup.com": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "flast",
+    "pattern2": "first",
+    "sample_count": 3
+  },
+  "lnmiit.ac.in": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "log3d.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "logosresourcesllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "lolaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "lonestarproduction.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "longfellowenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "lorax.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "lotusoperating.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "lsdecker.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "luckylad.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "luminageo.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "lung.mv-regierung.de": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "magnaoperating.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "magnumproducing.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "maidlaorganization.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "mail.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "marathonoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 37
+  },
+  "marinemagnetics.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "marklshidlerinc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "marsexp.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "matadorresources.com": {
+    "confidence": 0.96,
+    "pattern": "first.last",
+    "sample_count": 56
+  },
+  "matterhornenergyllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "mcclureoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "mccoypetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "mdctexasenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "mdsenergydev.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "melbana.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "meoaustralia.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "mepau.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "mercatorgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "mercsales.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "meridianenergy.us": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "meridianresourcesllc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "meritenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 5
+  },
+  "mertzenergy.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "mesaverdepetro.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "mewbourne.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "microseismic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "midcon-energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "millerandlents.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "miss-resources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "mohandassociates.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "mongolrefinery.mn": {
+    "confidence": 1.0,
+    "pattern": "first.l",
+    "sample_count": 1
+  },
+  "montara.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "montare-resources.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "morganstanley.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "morninggun.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "motive-ofshore.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "moyesco.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "mozgasenergy.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "mudrockenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "muelrexp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "mulldrilling.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "mymacewan.ca": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 1
+  },
+  "na-as.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "naturalfractures.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 1
+  },
+  "nblenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "neotechmetals.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "net-log.com.ar": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "neuoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "newfoundgold.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nexencnoocltd.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "nexeninc.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 1
+  },
+  "nilaholdings.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nineweightenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nne-llc.com": {
+    "confidence": 0.92,
+    "pattern": "flast",
+    "sample_count": 13
+  },
+  "noc.qa": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "nodalseismic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nomadgeosciences.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "normontcreek.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "northeasterngeophysical.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "northwindexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "notra.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nov.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "novascotia.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "novavitaresources.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "novoog.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nsai-petro.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "nssl.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nvaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nwgrimes.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "nwmo.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "nyexp.us": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "oasispetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "oceanfloorgeophysics.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "oceaniageo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ocelotconsultinggroup.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "odsi-energy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ogec.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "ogpenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "ogrisop.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "okane.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 2
+  },
+  "old300energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "oleumexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "oleumresource.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "olifantenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "onemain.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "ontario.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 9
+  },
+  "ontherocksgeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "open.ac.uk": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "openflow.inc": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "opsgeologic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "optasense.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "optimal-energy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "optinaccelerator.live": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "orano.group": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 7
+  },
+  "originenergy.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "ormat.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "otago.ac.nz": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "overtonpark.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ovintiv.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 15
+  },
+  "oxbow.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "oxy.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 169
+  },
+  "paddockgeophysical.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "palisade.email": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "palisadesenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "pampa.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "panamep.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "panthergeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "pario.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "parklandgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "pashpetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "pat.gp.tohoku.ac.jp": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "patenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "patriot-resources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "paxtonenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "payransystems.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "pdce.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 5
+  },
+  "pdvsa.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "pearlenergyservices.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "pegoil.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "pemoco.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "pennenergyresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 8
+  },
+  "penngeneralenergy.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "permianres.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 51
+  },
+  "permianseismic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "petricore.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "petroalphaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "petrochief.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "petrocubic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "petroexplorers.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "petrohunt.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "petrolerollc.com": {
+    "confidence": 1.0,
+    "pattern": "first.l",
+    "sample_count": 1
+  },
+  "petroleum-eng.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "petroleumandminerals.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "petroluminary.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "petronas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "petronas.com.my": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "petroneft.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "petroniche.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "petrophysicalsolutions.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "petroquest.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "petrosys-usa.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "petrosys.com.au": {
+    "confidence": 0.75,
+    "confidence2": 0.25,
+    "pattern": "first.last",
+    "pattern2": "first",
+    "sample_count": 4
+  },
+  "petrotal-corp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "pggroup.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "phoenix-geophysics.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "piedrallc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "pieoperating.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "plll.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 2
+  },
+  "poesiam.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "pofg.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 8
+  },
+  "polarisdata.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "potashcorp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "ppiks.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 3
+  },
+  "pre.dev": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "precisiongeosurveys.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "premieroilfieldlabs.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 7
+  },
+  "presidiopetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "primerockresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "prl.res.in": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "prodigy.net": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "progressenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "protege-energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "proton.energy": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "providence-energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "pruet.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "pxd.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "qualitylogging.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "quantecgeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "quantumcap.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "r360canada.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "radissonmining.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "railrock.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "rampikeresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rangeresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 18
+  },
+  "rapicuresolutions.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "raritanresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rbccm.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "rda-indonesia.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "redforkenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "redmanmc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "redmanresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "redstagresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "repsol.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 35
+  },
+  "republicoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "researchpetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "reserve-petro.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "resonanceresourcesllc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "returncarbon.nl": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "revochem.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "richrocconsultants.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ridge-ep.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ridgewoodenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rileypermian.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 4
+  },
+  "rinc.onenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "ringenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "riverford-resources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rivunc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "rmgeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "rock-it-solutions.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "rockdale.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rockiesstandard.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "rocksniffer.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "rocksolidseismic.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "rocoil.com.au": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "roffresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "rohmtek.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rokresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "roseassoc.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 2
+  },
+  "rosewd.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rrcompanies.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "rrpl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rundlegeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 5
+  },
+  "ruskenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "rwpc.us": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "rystadenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "sabaloenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "sabata.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "sageenergy.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "saipem.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "saltcreekpetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "samson.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "sandhillusa.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "sandler.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "sandpointpartners.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "sapiencenow.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "sarkx.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "savannahoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "sayeradvisors.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "sbcglobal.net": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "flast",
+    "pattern2": "first_last",
+    "sample_count": 3
+  },
+  "scacompanies.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "scepetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "scientificdrilling.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "scoutdp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "seashellnigeria.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "secure.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "seelyoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "seequent.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 10
+  },
+  "seisborg.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "seisglobe.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "seismiccity.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "seismicexchange.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "seismicsource.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "seisnetics.co": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "seisnetics.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "seisware.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "seisware.onmicrosoft.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "sentinelpetro.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "sequiturenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "sevendog.net": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "sghenergy.com.au": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "sgl.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "sharpreflections.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 13
+  },
+  "shaw.ca": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "sheffield.ac.uk": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "shell.com": {
+    "confidence": 0.67,
+    "confidence2": 0.33,
+    "pattern": "first.last",
+    "pattern2": "f.last",
+    "sample_count": 3
+  },
+  "sherwoodgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "shielsengineering.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "silverthorneseismic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "simcoegeoscience.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 4
+  },
+  "sinc.lairoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 7
+  },
+  "sinclairoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "sklarexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "skoilfield.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "sksa1.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "skyalert.mx": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "slb.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "sm-energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 92
+  },
+  "smartsolo.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 1
+  },
+  "snydercos.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "softwareone.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "soginc.net": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "spnaturalresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "sqmenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "srcx.com": {
+    "confidence": 1.0,
+    "pattern": "lastf",
+    "sample_count": 27
+  },
+  "sstarexpl.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "stallionoperating.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "stanolind.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "stantec.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "stategas.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "statlu.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "stauroliteconsulting.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "stepinnovations.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "sterlingseismic.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "stratochemlabs.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "student.utwente.nl": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "suddenlink.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "suemaur.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "sulmara.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "summitpetroleumllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "sunrise-xp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "surgeemergya.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "surgeenergya.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "svenenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "swn.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 19
+  },
+  "symroc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "tallgrass.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "talosenergyllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 13
+  },
+  "tanaexp.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "taskfronterra.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "tdboil.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "tdsecurities.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "technipfmc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "technodatasolution.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "teecsolutions.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "teleshare.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "telus.net": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "tergeoenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ternan-energy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "terracosmsoft.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "terraseis.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "terrasond.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "tetratech.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "texakoma.com": {
+    "confidence": 1.0,
+    "pattern": "firstlast",
+    "sample_count": 1
+  },
+  "texasindependent.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "texasroyalty.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "texcrude.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "texianop.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "texplore.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "tgcacquisition.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "tgs-geopex.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "tgs.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 12
+  },
+  "thquest.com": {
+    "confidence": 1.0,
+    "pattern": "f.last",
+    "sample_count": 1
+  },
+  "thronepetro.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "thurber.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "tillerdigital.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "titusoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "toceenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "toklanog.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "toprockgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "totalenergies.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "toveri.com.br": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "traceoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "treadstone-ep.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "treasurymetals.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "trekresources.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "tri-stargroup.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "tricresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "trilandenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "triplecrownenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "tshickman.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "ttproductionllc.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "tughilloperating.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "turtlebaygeophysical.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "txsoil.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "ultimatestaffing.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "undeerc.org": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 12
+  },
+  "uni-greifswald.de": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "unipamplona.edu.co": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "unipiaget-angola.org": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "unitawax.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "universalengineering.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "unknown.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "uplandexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "upside-energy.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "uptc.edu.co": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "urbanoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "usa.net": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "usaenergyexchange.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "uticareaource.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "utoronto.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "uvic.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "vaalco.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "vale.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "valleexploration.com": {
+    "confidence": 1.0,
+    "pattern": "last",
+    "sample_count": 1
+  },
+  "valorexploration.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "valpointoperating.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "vandelay.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "vantageoperating.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "vas4hire.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "vault4401.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "vecatoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "vectaoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "vefinc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "velvetenergy.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "vertex.ca": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "vetragroup.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "vgsandassociates.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "vickersgeophysics.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "vineoil.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "vintality.ca": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "viridiengroup.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "vitalenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "vogllc.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "vrify.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "vuw.ac.nz": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 7
+  },
+  "wadipetroleum.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "wagneroil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "walkerenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "walteroil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "wandooenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "wapitienergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "waterlineresources.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "waveguidegeo.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "waverity.ai": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 5
+  },
+  "wavetechenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "wd3oilgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "wdfgeo.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "wdoil.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "weircs.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "weiser-brown.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "welldog.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "welldrive.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "welllogdata.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 2
+  },
+  "wellsightdata.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "westbayexploration.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 3
+  },
+  "westsidecorporation.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "westwoodenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "weyerhaeuser.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "whiteoakenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "whiterockog.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 5
+  },
+  "whitmar.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 2
+  },
+  "wildfire-energy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "wiseoilgroup.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "wnrllc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "woodmac.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "woodplc.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "woodside.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 3
+  },
+  "woodside.com.au": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 9
+  },
+  "woolseyco.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 3
+  },
+  "wpxenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "wsp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 7
+  },
+  "wynncrosby.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "xcaliburmp.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "xcxpoperating.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "xleventlab.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "xps.ca": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 2
+  },
+  "xtoenergy.com": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 34
+  },
+  "yahoo.fr": {
+    "confidence": 1.0,
+    "pattern": "first_last",
+    "sample_count": 1
+  },
+  "zarvonaenergy.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 6
+  },
+  "zavanna.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 9
+  },
+  "zebramarketingsolutions.com": {
+    "confidence": 1.0,
+    "pattern": "first",
+    "sample_count": 1
+  },
+  "zipptechdata.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  },
+  "zoneoilandgas.com": {
+    "confidence": 1.0,
+    "pattern": "flast",
+    "sample_count": 1
+  },
+  "zonge.com": {
+    "confidence": 1.0,
+    "pattern": "first.last",
+    "sample_count": 1
+  }
+}

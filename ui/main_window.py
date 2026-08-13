@@ -964,8 +964,9 @@ class MainWindow(QMainWindow):
 
         # Port 25 warning banner (hidden until blocked)
         self._port25_banner = QLabel(
-            "  WARNING: Outbound port 25 is blocked. SMTP verification will return 'unknown'. "
-            "Use a VPN or cloud server for full verification. Best-guess emails will still be generated."
+            "  PORT 25 BLOCKED — SMTP verification is unavailable on this network. "
+            "Emails will still be generated using pattern detection, but cannot be SMTP-confirmed. "
+            "Run 'Generate Emails.bat' to export contacts, then verify externally via MillionVerifier or NeverBounce (both free tiers available)."
         )
         self._port25_banner.setStyleSheet(
             "background: #7F1D1D; color: #FCA5A5; padding: 6px 10px; "
@@ -2761,7 +2762,7 @@ class MainWindow(QMainWindow):
     def _show_onboarding(self):
         dlg = QDialog(self)
         dlg.setWindowTitle("Welcome to Lead Scout")
-        dlg.setMinimumSize(500, 420)
+        dlg.setMinimumSize(520, 600)
         dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(24, 24, 24, 24)
@@ -2805,21 +2806,65 @@ class MainWindow(QMainWindow):
         s1l.addWidget(btn_browse)
         layout.addWidget(step1)
 
-        # Step 2: Title filter
-        step2 = QGroupBox("Step 2 — Title Filter")
+        # Step 2: LinkedIn session
+        session_dir = get_output_dir() / "browser_session" / "Default"
+        has_session = session_dir.exists() and any(session_dir.iterdir())
+        step2 = QGroupBox("Step 2 — LinkedIn Session (Employment Verification)")
         s2l = QVBoxLayout(step2)
-        kw_count = len(self._get_active_include_keywords())
-        s2_lbl = QLabel(
-            f"{kw_count} default O&G keywords are active (geologist, engineer, VP, director…).\n"
-            "Click 'Configure Titles' in the Lead Scout tab to customize."
-        )
-        s2_lbl.setWordWrap(True)
-        s2_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
+        if has_session:
+            s2_lbl = QLabel("LinkedIn session detected — employment verification is active.")
+            s2_lbl.setStyleSheet("color: #4ADE80; font-size: 11px;")
+        else:
+            s2_lbl = QLabel(
+                "No LinkedIn session found. Without it, employment verification returns 'unknown' for ~50% of contacts.\n"
+                "Click the button below or use the LinkedIn button in the toolbar to log in."
+            )
+            s2_lbl.setWordWrap(True)
+            s2_lbl.setStyleSheet("color: #FBBF24; font-size: 11px;")
+            btn_li = QPushButton("Log in to LinkedIn now")
+            btn_li.clicked.connect(self._linkedin_relogin)
+            s2l.addWidget(btn_li)
         s2l.addWidget(s2_lbl)
         layout.addWidget(step2)
 
-        # Step 3: First company
-        step3 = QGroupBox("Step 3 — Add Your First Company")
+        # Step 3: HubSpot KB
+        kb_path = Path(__file__).parent.parent / "emailer" / "hubspot_knowledge.json"
+        step3 = QGroupBox("Step 3 — Email Pattern Knowledge Base")
+        s3l = QVBoxLayout(step3)
+        if kb_path.exists():
+            import json as _json
+            try:
+                kb_count = len(_json.loads(kb_path.read_text(encoding="utf-8")))
+            except Exception:
+                kb_count = 0
+            s3_lbl = QLabel(f"Knowledge base active — {kb_count} company domains with confirmed patterns.")
+            s3_lbl.setStyleSheet("color: #4ADE80; font-size: 11px;")
+        else:
+            s3_lbl = QLabel(
+                "No personal knowledge base found. A shared base (978 domains) is included and will be used automatically.\n\n"
+                "To build your own from your HubSpot contacts export, run 'Build Knowledge Base.bat'. "
+                "Your personal KB always takes priority and improves email accuracy over time."
+            )
+            s3_lbl.setWordWrap(True)
+            s3_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
+        s3l.addWidget(s3_lbl)
+        layout.addWidget(step3)
+
+        # Step 4: Title filter
+        step4 = QGroupBox("Step 4 — Title Filter")
+        s4l = QVBoxLayout(step4)
+        kw_count = len(self._get_active_include_keywords())
+        s4_lbl = QLabel(
+            f"{kw_count} default O&G keywords are active (geologist, engineer, VP, director…).\n"
+            "Click 'Configure Titles' in the Lead Scout tab to customize."
+        )
+        s4_lbl.setWordWrap(True)
+        s4_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
+        s4l.addWidget(s4_lbl)
+        layout.addWidget(step4)
+
+        # Step 5: First company
+        step3 = QGroupBox("Step 5 — Add Your First Company")
         s3l = QHBoxLayout(step3)
         self._ob_company_edit = QLineEdit()
         self._ob_company_edit.setPlaceholderText("e.g.  EOG Resources")

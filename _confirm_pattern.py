@@ -66,8 +66,10 @@ def main():
         sys.exit(1)
 
     # 1. Update domain cache (used for email generation)
+    # Preserve any existing pattern2 for dual-format companies
     cached = cache_get(company)
-    cache_put(company, domain, pattern, "manual")
+    existing_pattern2 = cached.get("pattern2") if cached else None
+    cache_put(company, domain, pattern, "manual", existing_pattern2)
     print(f"[+] Domain cache updated:")
     print(f"    Company : {company}")
     print(f"    Domain  : {domain}")

@@ -14,6 +14,9 @@ FIELDS = [
     "linkedin_url",
     "emp_status",
     "date_pulled",
+    "email",
+    "email_status",
+    "email_source",
 ]
 
 
