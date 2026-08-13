@@ -20,7 +20,7 @@ from PySide6.QtCore import Qt, Slot, QUrl, QTimer, QObject, Signal
 from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequence, QAction, QIcon
 
 from scraper.worker import SearchWorker
-from emailer.worker import EmailWorker, DROP_STATUSES
+from emailer.worker import EmailWorker, ApiVerifyWorker, DROP_STATUSES
 from emailer.generator import generate_candidates
 from emailer.domain_cache import all_entries as cache_all, get as cache_get, put as cache_put
 from emailer.smtp_verifier import port25_available
@@ -1137,6 +1137,15 @@ class MainWindow(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
+        self._crm_reverify_btn = QPushButton("Re-verify Emails (API)")
+        self._crm_reverify_btn.setMinimumHeight(38)
+        self._crm_reverify_btn.setToolTip(
+            "Run bounced / unverified contacts through NeverBounce → Reoon API "
+            "before exporting. Fixes false-bounces from SMTP probe rejections."
+        )
+        self._crm_reverify_btn.clicked.connect(self._crm_reverify_start)
+        btn_row.addWidget(self._crm_reverify_btn)
+
         self._crm_refresh_btn = QPushButton("Refresh Preview")
         self._crm_refresh_btn.setMinimumHeight(38)
         self._crm_refresh_btn.clicked.connect(self._crm_refresh_preview)
@@ -1149,6 +1158,11 @@ class MainWindow(QMainWindow):
         btn_row.addWidget(self._crm_export_btn)
 
         right.addLayout(btn_row)
+
+        self._crm_reverify_progress = QProgressBar()
+        self._crm_reverify_progress.setVisible(False)
+        self._crm_reverify_progress.setMaximumHeight(14)
+        right.addWidget(self._crm_reverify_progress)
 
         self._crm_status_label = QLabel("")
         self._crm_status_label.setStyleSheet("color: #555; font-size: 11px;")
@@ -1298,6 +1312,70 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
         except Exception as e:
             QMessageBox.warning(self, "Export Error", str(e))
+
+    # ── CRM re-verify ─────────────────────────────────────────────────────────
+
+    def _crm_reverify_start(self):
+        nb_key    = self._settings.get("nb_api_key", "")
+        reoon_key = self._settings.get("reoon_api_key", "")
+        if not nb_key and not reoon_key:
+            QMessageBox.warning(self, "No API Keys",
+                "Add your NeverBounce and/or Reoon API keys in Settings first.\n\n"
+                "Settings → NeverBounce Key / Reoon Key (fallback)")
+            return
+
+        contacts = self._crm_source_contacts()
+        to_check = [c for c in contacts
+                    if c.get("email") and c.get("email_status", "") in
+                    {"bounced", "unverified", "unknown", "catch-all-risky"}]
+
+        if not to_check:
+            self._crm_status_label.setText("Nothing to re-verify — all emails already confirmed.")
+            return
+
+        self._crm_reverify_btn.setEnabled(False)
+        self._crm_export_btn.setEnabled(False)
+        self._crm_reverify_progress.setVisible(True)
+        self._crm_reverify_progress.setRange(0, len(to_check))
+        self._crm_reverify_progress.setValue(0)
+        self._crm_status_label.setText(f"Re-verifying {len(to_check)} contacts via API…")
+
+        self._api_worker = ApiVerifyWorker(contacts, nb_api_key=nb_key, reoon_api_key=reoon_key)
+        self._api_worker.contact_result.connect(self._crm_on_reverify_result)
+        self._api_worker.progress.connect(
+            lambda done, total: self._crm_reverify_progress.setValue(done)
+        )
+        self._api_worker.status_update.connect(
+            lambda msg: self._crm_status_label.setText(msg)
+        )
+        self._api_worker.all_done.connect(self._crm_on_reverify_done)
+        self._api_worker.start()
+
+    @Slot(int, dict)
+    def _crm_on_reverify_result(self, idx: int, updated: dict):
+        """Update the contact in-place in both the enriched list and source contacts."""
+        # Update in _email_enriched so the email enricher tab also reflects the change
+        for i, c in enumerate(self._email_enriched):
+            if c.get("linkedin_url") == updated.get("linkedin_url") and \
+               c.get("email") == updated.get("email"):
+                self._email_enriched[i] = updated
+                break
+        # Update in _crm_contacts if sourced from CSV
+        for i, c in enumerate(self._crm_contacts):
+            if c.get("linkedin_url") == updated.get("linkedin_url") and \
+               c.get("email") == updated.get("email"):
+                self._crm_contacts[i] = updated
+                break
+
+    @Slot(int)
+    def _crm_on_reverify_done(self, updated_count: int):
+        self._crm_reverify_btn.setEnabled(True)
+        self._crm_export_btn.setEnabled(True)
+        self._crm_reverify_progress.setVisible(False)
+        self._crm_refresh_preview()
+        msg = f"Re-verification complete — {updated_count} status(es) updated."
+        self._crm_status_label.setText(msg)
+        self.statusBar().showMessage(msg)
 
     # ── Style ────────────────────────────────────────────────────────────────
 

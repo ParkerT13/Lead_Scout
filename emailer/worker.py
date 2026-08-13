@@ -291,6 +291,79 @@ class EmailWorker(QThread):
         return first, last, name
 
 
+# ── API re-verify worker (for CRM export pre-flight check) ───────────────────
+
+# Statuses that are worth re-checking via API before export
+_REVERIFY_STATUSES = {"bounced", "unverified", "unknown", "catch-all-risky"}
+
+# Statuses that upgrade to confirmed when the pattern source is reliable
+_RELIABLE_SOURCES = {"hubspot", "scraped", "emailformat", "smtp-verified", "manual"}
+
+
+class ApiVerifyWorker(QThread):
+    """
+    Re-verifies contacts that have a questionable email status (bounced from
+    SMTP probe, unverified, unknown) using NeverBounce / Reoon API.
+    Emits each result as it completes so the UI can update in real time.
+    """
+    contact_result = Signal(int, dict)   # index into contacts list, updated contact dict
+    progress       = Signal(int, int)    # done, total
+    status_update  = Signal(str)
+    all_done       = Signal(int)         # number of contacts updated
+
+    def __init__(self, contacts: list[dict], nb_api_key: str = "", reoon_api_key: str = ""):
+        super().__init__()
+        self._contacts     = contacts
+        self._nb_key       = nb_api_key.strip()
+        self._reoon_key    = reoon_api_key.strip()
+        self._stop         = False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        _api_reset()
+        to_check = [
+            (i, c) for i, c in enumerate(self._contacts)
+            if c.get("email") and c.get("email_status", "") in _REVERIFY_STATUSES
+        ]
+        total   = len(to_check)
+        updated = 0
+
+        for done, (i, contact) in enumerate(to_check):
+            if self._stop:
+                break
+
+            email  = contact["email"]
+            self.status_update.emit(f"Verifying {email}…")
+
+            r      = verify_via_api(email, self._nb_key, self._reoon_key)
+            status = r["status"]
+
+            # Upgrade catch-all-risky if pattern source is reliable
+            if status == "catch-all-risky":
+                src = contact.get("email_source_raw") or contact.get("email_source", "")
+                if any(s in src for s in _RELIABLE_SOURCES):
+                    status = "catch-all-confirmed"
+
+            confidence = {
+                "verified":            "High",
+                "catch-all-confirmed": "Medium",
+                "catch-all-risky":     "Low",
+            }.get(status, "")
+
+            updated_contact = {**contact, "email_status": status, "confidence": confidence}
+            self.contact_result.emit(i, updated_contact)
+            self.progress.emit(done + 1, total)
+
+            if status != contact.get("email_status"):
+                updated += 1
+
+            time.sleep(0.4)  # stay within API rate limits
+
+        self.all_done.emit(updated)
+
+
 def _local_to_pattern(local: str, first: str, last: str) -> str:
     fi = first[0] if first else ""
     li = last[0]  if last  else ""
