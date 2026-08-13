@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from emailer.domain_cache import get as cache_get, put as cache_put
 
 def infer_pattern(fn: str, ln: str, email: str) -> str | None:
-    local = re.sub(r"[^a-z.]", "", email.split("@")[0].lower())
+    local = re.sub(r"[^a-z._\-]", "", email.split("@")[0].lower())
     fi = fn[0] if fn else ""
     li = ln[0] if ln else ""
     mapping = {
@@ -36,6 +36,10 @@ def infer_pattern(fn: str, ln: str, email: str) -> str | None:
         f"{fn}":      "first",
         f"{ln}.{fn}": "last.first",
         f"{li}{fn}":  "lfirst",
+        f"{fn}_{ln}": "first_last",
+        f"{fn}-{ln}": "first-last",
+        f"{ln}{fi}":  "lastf",
+        f"{ln}":      "last",
     }
     return mapping.get(local)
 

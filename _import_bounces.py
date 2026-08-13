@@ -129,7 +129,7 @@ if not emails:
 
 print(f"Found {len(emails)} bounced addresses.")
 record_bounces(emails, campaign)
-print(f"Saved to ~/ContactPuller_Output/bounces.json")
+print(f"Saved to ~/LeadScout_Output/bounces.json")
 
 print("\nUpdating enriched CSVs in Downloads...")
 n = update_enriched_csvs(set(emails))

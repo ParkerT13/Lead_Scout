@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from emailer.domain_finder import find_domain
-from emailer.pattern_detector import detect_pattern
+from emailer.pattern_detector import detect_pattern, get_kb_pattern2
 from emailer.generator import generate_candidates
 from emailer.smtp_verifier import get_mx
 from emailer.domain_cache import get as cache_get, put as cache_put
@@ -63,13 +63,16 @@ for ci, company in enumerate(by_company.keys()):
         domain         = cached["domain"]
         pattern        = cached.get("pattern")
         pattern_source = cached.get("pattern_source", "cache")
+        pattern2       = cached.get("pattern2")
         print(f"  Domain : {domain}  [cache]")
         # If domain is cached but pattern is unknown, re-run pattern detection
         if not pattern or pattern_source in ("none",):
             pattern, pattern_source = detect_pattern(domain)
-            cache_put(company, domain, pattern, pattern_source)
+            pattern2 = get_kb_pattern2(domain)
+            cache_put(company, domain, pattern, pattern_source, pattern2)
         if pattern:
-            print(f"  Pattern: {pattern} ({pattern_source})")
+            p2_msg = f" + {pattern2}" if pattern2 else ""
+            print(f"  Pattern: {pattern}{p2_msg} ({pattern_source})")
         else:
             print(f"  Pattern: unknown — using first.last")
     else:
@@ -84,11 +87,13 @@ for ci, company in enumerate(by_company.keys()):
         mx = get_mx(domain)
         print(f"  MX     : {mx or 'not found'}")
         pattern, pattern_source = detect_pattern(domain)
+        pattern2 = get_kb_pattern2(domain)
         if pattern:
-            print(f"  Pattern: {pattern} ({pattern_source})")
+            p2_msg = f" + {pattern2}" if pattern2 else ""
+            print(f"  Pattern: {pattern}{p2_msg} ({pattern_source})")
         else:
             print(f"  Pattern: unknown — using first.last")
-        cache_put(company, domain, pattern, pattern_source)
+        cache_put(company, domain, pattern, pattern_source, pattern2)
 
     if pattern:
         status_label = "pattern-confirmed" if pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual") else "pattern-ddg"
@@ -106,7 +111,7 @@ for ci, company in enumerate(by_company.keys()):
             last  = parts[-1] if len(parts) > 1 else ""
         name = c.get("name", f"{first} {last}".strip())
 
-        candidates = generate_candidates(first, last, domain, pattern)
+        candidates = generate_candidates(first, last, domain, pattern, pattern2)
         email = candidates[0] if candidates else ""
 
         # Skip previously bounced addresses

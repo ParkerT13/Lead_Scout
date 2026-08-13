@@ -11,8 +11,7 @@ _SKIP_TITLES = {
     # Job-seekers / students
     "seeking", "open to work", "open to opportunities",
     "intern", "student", "graduate", "recent graduate",
-    # Scope exceptions
-    "drilling engineer",   # not in Mercury ICP — keep this out
+    # Scope exceptions — none currently
 }
 
 # A job title must contain at least one of these to be accepted.

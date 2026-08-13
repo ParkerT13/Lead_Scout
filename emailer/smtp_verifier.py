@@ -35,8 +35,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 _TIMEOUT       = 12          # seconds per SMTP operation
-_PROBE_FROM    = "probe@contactpuller.test"
-_PROBE_EHLO    = "contactpuller.test"
+_PROBE_FROM    = "probe@leadscout.test"
+_PROBE_EHLO    = "leadscout.test"
 _FAKE_LOCAL    = "zzzfake99nobody"   # used for catch-all detection
 
 # Cache MX lookups so we hit DNS once per domain per session

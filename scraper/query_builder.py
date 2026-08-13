@@ -5,6 +5,7 @@ TARGET_TITLES = [
     # Engineering
     "petroleum engineer",
     "reservoir engineer",
+    "drilling engineer",
     "completions engineer",
     "completion engineer",
     "production engineer",

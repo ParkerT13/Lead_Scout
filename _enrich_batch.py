@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from emailer.domain_finder import find_domain
-from emailer.pattern_detector import detect_pattern
+from emailer.pattern_detector import detect_pattern, get_kb_pattern2
 from emailer.generator import generate_candidates
 from emailer.smtp_verifier import get_mx, port25_available
 from emailer.email_verifier import verify_email as _verify_email
@@ -89,8 +89,10 @@ for ci, company in enumerate(companies):
 
     # Pattern
     pattern, pattern_source = detect_pattern(domain)
+    pattern2 = get_kb_pattern2(domain)
     if pattern:
-        print(f"  Pattern: {pattern} ({pattern_source})")
+        p2_msg = f" + {pattern2}" if pattern2 else ""
+        print(f"  Pattern: {pattern}{p2_msg} ({pattern_source})")
     else:
         print(f"  Pattern: unknown — trying all variants")
 
@@ -106,7 +108,7 @@ for ci, company in enumerate(companies):
             last  = parts[-1] if len(parts) > 1 else ""
         name = c.get("name", f"{first} {last}".strip())
 
-        candidates = generate_candidates(first, last, domain, pattern)
+        candidates = generate_candidates(first, last, domain, pattern, pattern2)
         if not candidates:
             print(f"  [?] {name} — could not build candidates")
             c.update({"email": "", "email_status": "no candidates", "email_source": domain})
@@ -129,8 +131,8 @@ for ci, company in enumerate(companies):
             if r["status"] == "bounced" and status == "unknown":
                 status = "bounced"
 
-        # Upgrade catch-all-risky to catch-all-confirmed if pattern was scraped
-        if status == "catch-all-risky" and pattern_source == "scraped":
+        # Upgrade catch-all-risky to catch-all-confirmed if pattern is reliably sourced
+        if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual"):
             status = "catch-all-confirmed"
 
         catch_all = status in ("catch-all-confirmed", "catch-all-risky")
