@@ -113,6 +113,7 @@ _EMAIL_COLORS = {
     "verified":              "#2E7D32",
     "catch-all-confirmed":   "#E65100",
     "catch-all-risky":       "#C62828",
+    "unverified":            "#888888",
     "bounced":               "#C62828",
 }
 

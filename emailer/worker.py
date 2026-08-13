@@ -54,11 +54,13 @@ class EmailWorker(QThread):
 
     def __init__(self, contacts: list[dict]):
         super().__init__()
-        self._contacts = contacts
-        self._stop     = False
+        self._contacts  = contacts
+        self._stop      = False
+        self._port25_ok = True
 
     def run(self):
-        if not port25_available():
+        self._port25_ok = port25_available()
+        if not self._port25_ok:
             self.port25_blocked.emit()
 
         by_company: dict[str, list[dict]] = defaultdict(list)
@@ -152,17 +154,22 @@ class EmailWorker(QThread):
             email  = candidates[0] if candidates else ""
             status = "unknown"
 
-            for candidate in candidates:
-                r = _verify_email(candidate)
-                self.status_update.emit(f"  -> {candidate} [{r['status']}]")
-                if r["status"] == "verified":
-                    email, status = candidate, "verified"
-                    break
-                if r["status"] == "catch-all-risky":
-                    status = "catch-all-risky"
-                    break
-                if r["status"] == "bounced" and status == "unknown":
-                    status = "bounced"
+            if self._port25_ok:
+                for candidate in candidates:
+                    r = _verify_email(candidate)
+                    self.status_update.emit(f"  -> {candidate} [{r['status']}]")
+                    if r["status"] == "verified":
+                        email, status = candidate, "verified"
+                        break
+                    if r["status"] == "catch-all-risky":
+                        status = "catch-all-risky"
+                        break
+                    if r["status"] == "bounced" and status == "unknown":
+                        status = "bounced"
+            else:
+                # Port 25 blocked — skip SMTP, use pattern-preferred candidate as-is
+                status = "unverified"
+                self.status_update.emit(f"  -> {email} [unverified — port 25 blocked]")
 
             # Upgrade catch-all-risky if pattern is reliably sourced
             if status == "catch-all-risky" and pattern_source in ("scraped", "emailformat", "hubspot", "smtp-verified", "manual"):
@@ -175,7 +182,16 @@ class EmailWorker(QThread):
             if email and is_bounced(email):
                 status = "bounced"
 
-            enriched = {**contact, "email": email, "email_status": status, "email_source": source}
+            # Confidence label for CRM export
+            confidence = {
+                "verified":            "High",
+                "catch-all-confirmed": "Medium",
+                "catch-all-risky":     "Low",
+                "unverified":          "Low",
+            }.get(status, "")
+
+            enriched = {**contact, "email": email, "email_status": status,
+                        "email_source": source, "confidence": confidence}
             self.contact_enriched.emit(enriched)
 
             if status == "verified":

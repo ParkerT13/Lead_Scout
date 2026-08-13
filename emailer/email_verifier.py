@@ -1,7 +1,7 @@
 """
 email_verifier.py
 
-Standalone email verification module for ContactPuller.
+Standalone email verification module for Lead Scout.
 Matches existing conventions in emailer/smtp_verifier.py:
   - stdlib only except dnspython for MX lookups
   - ASCII-only console output (no unicode arrows/checks)
@@ -54,8 +54,8 @@ ROLE_LOCALPARTS = {
 }
 
 DEFAULT_TIMEOUT = 10
-DEFAULT_HELO_DOMAIN = "example.com"
-DEFAULT_MAIL_FROM = "verify@example.com"
+DEFAULT_HELO_DOMAIN = "leadscout.test"
+DEFAULT_MAIL_FROM = "probe@leadscout.test"
 
 
 def check_syntax(email):
