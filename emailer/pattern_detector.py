@@ -98,8 +98,7 @@ def detect_pattern_ex(domain: str, findings: list | None = None) -> Detection:
       0. HubSpot KB                   (real contacts from our own CRM)
       1. Website name+email pairs     (published proof; multi-page, deobfuscated)
       2. emailformat.com              (crowdsourced)
-      3. Website dot-style hints      (j.smith@ with no name)
-      4. DDG snippets
+      3. DDG snippets
     `findings` may be passed in (e.g. from cache) to skip the crawl.
     """
     from emailer import site_harvester as sh
@@ -132,10 +131,6 @@ def detect_pattern_ex(domain: str, findings: list | None = None) -> Detection:
         logger.info("Pattern for %s: %s (emailformat.com)", domain, pattern)
         return Detection(pattern, "emailformat", site.pattern2, 0, findings)
 
-    if site.pattern:   # weak: dot-style hint only
-        logger.info("Pattern for %s: %s (website dot-hint)", domain, site.pattern)
-        return Detection(site.pattern, "scraped", site.pattern2, site.support, findings)
-
     # Search-engine snippets: collect *all* published addresses and vote
     extra = _ddg_findings(domain)
     if extra:
@@ -145,7 +140,7 @@ def detect_pattern_ex(domain: str, findings: list | None = None) -> Detection:
                 merged[f.email] = f
         findings = list(merged.values())
         res = sh.infer_patterns(findings)
-        if res.pattern:
+        if res.strong:      # weak dot-style hints were right only ~1 in 3 in testing: ignore them
             logger.info("Pattern for %s: %s (search, %d email(s): %s)",
                         domain, res.pattern, res.support, ", ".join(res.samples))
             return Detection(res.pattern, "ddg", res.pattern2, res.support, findings)
@@ -156,23 +151,51 @@ def detect_pattern_ex(domain: str, findings: list | None = None) -> Detection:
 
 # ── emailformat.com ───────────────────────────────────────────────────────────
 
+# email-format.com descriptor tokens -> our token names
+_TOKENS = {"first_name": "first", "last_name": "last", "first_initial": "f", "last_initial": "l"}
+
+# (token tuple, separator in the example address) -> pattern
+_FORMAT_TABLE = {
+    (("first", "last"), "."): "first.last", (("first", "last"), "_"): "first_last",
+    (("first", "last"), "-"): "first-last", (("first", "last"), ""): "firstlast",
+    (("f", "last"), ""): "flast", (("f", "last"), "."): "f.last",
+    (("first", "l"), "."): "first.l",
+    (("first",), ""): "first", (("last",), ""): "last",
+    (("last", "first"), "."): "last.first", (("last", "f"), ""): "lastf",
+    (("l", "first"), ""): "lfirst",
+}
+
+_FORMAT_MIN_PCT = 60      # below this the site is not decisive (50-60% shares proved wrong in testing)
+
+
 def _emailformat_lookup(domain: str) -> str | None:
+    """Most common format per email-format.com (needs >=50% share and a decodable example)."""
+    from emailer.site_harvester import decode_cf_email
     try:
-        r = requests.get(f"https://www.emailformat.com/d/{domain}", headers=_HEADERS, timeout=10)
+        r = requests.get(f"https://www.email-format.com/d/{domain}/", headers=_HEADERS, timeout=10)
         if r.status_code != 200:
             return None
-        text = BeautifulSoup(r.text, "html.parser").get_text(" ", strip=True)
-        # Exact token match first
-        for label, pattern in _PATTERN_MAP.items():
-            if label.startswith("{") and label in text:
-                return pattern
-        # Percentage-ranked table: "74% {first}.{last}"
-        hits = re.findall(r"(\d+)\s*%\s*(\{[^}]+\}(?:[._]?\{[^}]+\})?)", text)
-        if hits:
-            best = max(hits, key=lambda x: int(x[0]))
-            return _PATTERN_MAP.get(best[1])
+        soup = BeautifulSoup(r.text, "html.parser")
+        best = None
+        for box in soup.select("div.format_score_container"):
+            fmt = box.select_one("div.format")
+            pct = box.select_one("div.confidence_value")
+            if not fmt or not pct:
+                continue
+            m = re.search(r"(\d+)", pct.get_text())
+            tokens = tuple(_TOKENS.get(t) for t in fmt.get_text(" ", strip=True).split())
+            if not m or None in tokens or not tokens:
+                continue
+            example = box.select_one("[data-cfemail]")
+            local = (decode_cf_email(example["data-cfemail"]) or "").split("@")[0] if example else ""
+            sep = next((c for c in local if c in "._-"), "")
+            pattern = _FORMAT_TABLE.get((tokens, sep))
+            if pattern and (best is None or int(m.group(1)) > best[0]):
+                best = (int(m.group(1)), pattern)
+        if best and best[0] >= _FORMAT_MIN_PCT:
+            return best[1]
     except Exception as e:
-        logger.debug("emailformat.com failed for %s: %s", domain, e)
+        logger.debug("email-format.com failed for %s: %s", domain, e)
     return None
 
 
@@ -225,3 +248,47 @@ def _infer_dot_pattern(email: str) -> str | None:
         return "first.last"
     # 3+ parts: first.middle.last or similar — treat as first.last
     return "first.last"
+
+
+_COMPANY_MAIL_QUERIES = ['"{company}" email "@"', '"{company}" contact email address']
+
+
+def ddg_mail_domain(company: str, current_domain: str = "") -> str:
+    """
+    When a company's website reveals no addresses, ask the search engine which domain real
+    @addresses for this company use (e.g. Scout Energy Partners -> scoutep.com).
+    Returns "" unless >=2 distinct addresses on one non-free domain AND the domain name
+    contains a distinctive word of the company name.
+    """
+    import re
+    from collections import defaultdict
+    from emailer import site_harvester as sh
+    words = [w for w in re.findall(r"[a-z0-9]+", company.lower())
+             if len(w) >= 4 and w not in ("energy", "resources", "company", "partners", "operating",
+                                            "petroleum", "holdings", "group", "limited", "corporation")]
+    if not words:
+        return ""
+    seen: dict[str, set] = defaultdict(set)
+    try:
+        from ddgs import DDGS
+        with DDGS() as ddgs:
+            for tpl in _COMPANY_MAIL_QUERIES:
+                try:
+                    results = list(ddgs.text(tpl.replace("{company}", company), max_results=10))
+                except Exception:
+                    continue
+                for r in results:
+                    text = r.get("title", "") + " . " + r.get("body", "")
+                    for f in sh.extract_from_text(text, None, r.get("href", "")):
+                        host = f.email.rsplit("@", 1)[-1]
+                        if host not in sh._FREE_MAIL:
+                            seen[host].add(f.email)
+                time.sleep(1)
+    except Exception as e:
+        logger.warning("Company mail-domain search error: %s", e)
+        return ""
+    for host, addrs in sorted(seen.items(), key=lambda kv: -len(kv[1])):
+        label = re.sub(r"[^a-z0-9]", "", host.split(".")[0])
+        if len(addrs) >= 2 and any(w in label for w in words) and host != current_domain:
+            return host
+    return ""

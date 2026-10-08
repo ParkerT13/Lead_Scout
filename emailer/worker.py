@@ -55,11 +55,14 @@ class EmailWorker(QThread):
             by_company[c.get("company", "Unknown")].append(c)
 
         companies = list(by_company.keys())
+        prefetch = enricher.prefetch(companies)
         for i, company in enumerate(companies):
             if self._stop:
                 break
             contacts = by_company[company]
             self.company_started.emit(company, len(contacts))
+            self.company_status.emit(company, "Researching company...")
+            prefetch.wait(company)
             good = 0
             try:
                 for result in enricher.enrich_company(company, contacts):
@@ -75,10 +78,11 @@ class EmailWorker(QThread):
             self.company_done.emit(company, good, len(contacts))
 
             if not self._stop and i < len(companies) - 1:
-                delay = random.uniform(*_COMPANY_DELAY) if enricher.port25_ok or enricher.has_api else 1.0
+                delay = random.uniform(*_COMPANY_DELAY) if enricher.port25_ok else 0.5   # only SMTP needs politeness
                 self.status_update.emit(f"Cooling down {delay:.0f}s...")
                 time.sleep(delay)
 
+        prefetch.close()
         self.all_done.emit()
 
     def stop(self):

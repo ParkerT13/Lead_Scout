@@ -25,7 +25,9 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Callable, Iterator
 
 from emailer import site_harvester as sh
@@ -36,14 +38,15 @@ from emailer.domain_cache import (get as cache_get, put as cache_put,
 from emailer.domain_finder import find_domain
 from emailer.email_verifier import (check_catch_all, get_mx_records,
                                     verify_email as smtp_verify)
-from emailer.generator import generate_candidates
-from emailer.pattern_detector import detect_pattern_ex, get_kb_entry, get_kb_pattern2
+from emailer.generator import clean_name, generate_candidates
+from emailer.pattern_detector import ddg_mail_domain, detect_pattern_ex, get_kb_entry, get_kb_pattern2
 from emailer.smtp_verifier import get_mx
 
 logger = logging.getLogger(__name__)
 
 # Pattern sources that are backed by evidence rather than a guess
-RELIABLE_SOURCES = {"hubspot", "scraped", "emailformat", "smtp-verified",
+# "ddg" = strong name+email evidence from search snippets (4/4 correct in testing); weak hints are dropped
+RELIABLE_SOURCES = {"hubspot", "scraped", "emailformat", "ddg", "smtp-verified",
                     "api-verified", "manual"}
 
 # Statuses meaning the address is undeliverable / unusable
@@ -61,20 +64,29 @@ CONFIDENCE = {
     "unverified":          "Low",
 }
 
-_LABELS = {"hubspot": "HubSpot KB", "scraped": "from website", "emailformat": "emailformat.com",
-           "ddg": "via search", "smtp-verified": "SMTP confirmed",
+_LABELS = {"hubspot": "HubSpot KB", "scraped": "from website", "emailformat": "email-format.com",
+           "ddg": "from search results", "smtp-verified": "SMTP confirmed",
            "api-verified": "API confirmed", "manual": "manual"}
 
 
+_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v", "phd", "pe", "mba", "cpg", "pg", "esq"}
+
+
+def _tokens(name: str) -> list[str]:
+    raw = re.sub(r"\([^)]*\)", " ", (name or "").split(",")[0])
+    return [t for t in raw.split() if t.strip(".").lower() not in _SUFFIXES]
+
+
 def name_parts(contact: dict) -> tuple[str, str, str]:
+    """(first, last, display). Tolerates old rows whose last_name column is 'III' or missing."""
+    full = contact.get("name") or ""
     first = contact.get("first_name") or ""
     last = contact.get("last_name") or ""
-    if not first or not last:
-        raw = (contact.get("name") or "").split(",")[0].strip()
-        parts = raw.split()
-        first = parts[0] if parts else ""
-        last = parts[-1] if len(parts) > 1 else ""
-    return first, last, contact.get("name") or f"{first} {last}".strip()
+    if last.strip(".").lower() in _SUFFIXES or not first or not last:
+        toks = _tokens(full)
+        first = toks[0] if (toks and (not first or last.strip(".").lower() in _SUFFIXES)) else first
+        last = toks[-1] if len(toks) > 1 else ""
+    return first, last, full or f"{first} {last}".strip()
 
 
 def local_to_pattern(local: str, first: str, last: str) -> str | None:
@@ -112,13 +124,77 @@ class Enricher:
     def _pause(self):
         time.sleep(random.uniform(*self.contact_delay))
 
+    # ── Domain resolution ────────────────────────────────────────────────
+
+    def _resolve_domain(self, company: str, say) -> tuple[str, list | None]:
+        """
+        Return (mail_domain, own_findings). own_findings is None when the website was not
+        crawled (cache hit). A company's WEB domain is often not its MAIL domain, so the
+        crawl also looks at which other corporate domains the site publishes addresses for:
+          - web domain has no mail server  -> use a published domain that does (>=3 addresses
+            or a name that resembles the web domain)
+          - web domain publishes nothing but another domain publishes >=4 -> use that one
+        """
+        domain = find_domain(company)
+        if not domain:
+            return "", None
+        cached = cache_get(company)
+        if cached and cached.get("domain") == domain and get_harvest(company) is not None:
+            return domain, None                      # already researched (alt domain included)
+
+        try:
+            res = sh.harvest_ex(domain)
+        except Exception as e:
+            logger.warning("Website crawl failed for %s: %s", domain, e)
+            return domain, None
+
+        has_mx = bool(get_mx(domain))
+        slug = "".join(ch for ch in domain.split(".")[0] if ch.isalpha())
+        for alt in res.mail_domains():
+            rows = res.foreign[alt]
+            alt_slug = "".join(ch for ch in alt.split(".")[0] if ch.isalpha())
+            related = len(alt_slug) >= 3 and (alt_slug in slug or slug in alt_slug)
+            if has_mx:
+                wanted = not res.findings and len(rows) >= 4
+            else:
+                wanted = len(rows) >= 3 or related
+            if wanted and get_mx(alt):
+                say(f"Using mail domain {alt} (published on {domain})")
+                logger.info("Mail domain for %s: %s (site %s, %d address(es))", company, alt, domain, len(rows))
+                return alt, rows
+        if not res.findings and not get_kb_entry(domain):
+            # Website shows nothing and we have no CRM data: ask search which mail domain is real
+            found = ddg_mail_domain(company, domain)
+            if found and get_mx(found):
+                say(f"Using mail domain {found} (seen in search results)")
+                return found, None
+        if not has_mx:
+            say(f"{domain} has no mail server")
+        return domain, res.findings
+
+    # ── Pre-warming ──────────────────────────────────────────────────────
+
+    def prefetch(self, companies: list[str], workers: int = 3) -> "Prefetch":
+        """Resolve domain + format + website harvest for upcoming companies in background
+        threads, so the (slow, network-bound) discovery overlaps with verification."""
+        return Prefetch(self, companies, workers)
+
+    def warm(self, company: str):
+        """Fill the cache for one company. Safe to call from a worker thread."""
+        try:
+            domain, seed = self._resolve_domain(company, lambda m: None)
+            if domain and get_mx(domain):
+                self._detect(company, domain, lambda m: None, seed)
+        except Exception:
+            logger.exception("Prefetch failed for %s", company)
+
     # ── Company ──────────────────────────────────────────────────────────
 
     def enrich_company(self, company: str, contacts: list[dict]) -> Iterator[dict]:
         say = lambda m: self._say(company, m)
 
         say("Finding domain...")
-        domain = find_domain(company)
+        domain, seed = self._resolve_domain(company, say)
         if not domain:
             say("No domain found")
             for c in contacts:
@@ -132,7 +208,7 @@ class Enricher:
                 yield {**c, "email": "", "email_status": "no MX", "email_source": domain, "confidence": ""}
             return
 
-        pattern, pattern_source, pattern2, findings = self._detect(company, domain, say)
+        pattern, pattern_source, pattern2, findings = self._detect(company, domain, say, seed)
 
         # Format probe over SMTP (only meaningful with port 25 and no evidence yet)
         if self.port25_ok and pattern_source not in RELIABLE_SOURCES:
@@ -148,12 +224,15 @@ class Enricher:
                 break
             yield self._enrich_contact(company, domain, contact, findings, state)
 
-    def _detect(self, company, domain, say):
+    def _detect(self, company, domain, say, seed=None):
         say(f"Detecting email format for {domain}...")
         cached = cache_get(company)
         same = bool(cached and cached.get("domain") == domain)
         rows = get_harvest(company) if same else None
         findings = sh.findings_from_json(rows) if rows is not None else None
+
+        if findings is None and seed is not None:
+            findings = list(seed)            # already crawled by _resolve_domain
 
         if same and cached.get("pattern") is not None:
             pattern = cached["pattern"]
@@ -198,6 +277,11 @@ class Enricher:
     def _enrich_contact(self, company, domain, contact, findings, state) -> dict:
         first, last, name = name_parts(contact)
         base = {**contact}
+
+        if len(clean_name(first)) < 2 or len(clean_name(last)) < 2:
+            # "Trevor P." would produce junk like tp@company.com
+            return {**base, "email": "", "email_status": "no candidates",
+                    "email_source": "incomplete name", "confidence": ""}
 
         site_email = sh.find_contact_email(findings, first, last, domain)
         if site_email and not is_bounced(site_email):
@@ -321,3 +405,22 @@ class Enricher:
                 return None
             time.sleep(self.probe_delay)
         return None
+
+
+class Prefetch:
+    """Background discovery for a list of companies; wait(company) blocks until it is cached."""
+
+    def __init__(self, enricher: Enricher, companies: list[str], workers: int = 3):
+        self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="warm")
+        self._futures: dict[str, Future] = {c: self._pool.submit(enricher.warm, c) for c in companies}
+
+    def wait(self, company: str, timeout: float = 180.0):
+        fut = self._futures.get(company)
+        if fut is not None:
+            try:
+                fut.result(timeout=timeout)
+            except Exception:
+                pass                     # enrich_company will simply do the work itself
+
+    def close(self):
+        self._pool.shutdown(wait=False, cancel_futures=True)

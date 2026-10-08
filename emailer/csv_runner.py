@@ -58,8 +58,10 @@ def run(input_path: Path, output_path: Path, verify: bool) -> list[dict]:
 
     results: list[dict] = []
     names = list(by_company)
+    prefetch = enricher.prefetch(names)
     for i, company in enumerate(names):
         group = by_company[company]
+        prefetch.wait(company)
         print(f"--- {company.upper()} ({len(group)} contacts) ---")
         try:
             for r in enricher.enrich_company(company, group):
@@ -75,6 +77,7 @@ def run(input_path: Path, output_path: Path, verify: bool) -> list[dict]:
             time.sleep(random.uniform(3, 6))
         print()
 
+    prefetch.close()
     summary: dict[str, int] = defaultdict(int)
     for r in results:
         summary[r["email_status"]] += 1

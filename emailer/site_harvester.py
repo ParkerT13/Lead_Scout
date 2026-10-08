@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 
 from emailer.generator import PATTERNS, apply_pattern, clean_name, first_name_variants
 
@@ -57,6 +57,7 @@ _OBFUSCATED_RE = re.compile(
 _DOT_RE = re.compile(r"\s*[\[\(\{]\s*dot\s*[\]\)\}]\s*", re.IGNORECASE)
 _CF_ATTR_RE = re.compile(r'data-cfemail="([a-fA-F0-9]+)"')
 _CF_HREF_RE = re.compile(r"/cdn-cgi/l/email-protection#([a-fA-F0-9]+)")
+_AT_HINT_RE = re.compile(r"@|\[\s*at\s*\]|\(\s*at\s*\)|\{\s*at\s*\}", re.IGNORECASE)
 _NAME_RE = re.compile(
     r"\b([A-Z][a-z]{1,15}(?:[-'][A-Z][a-z]{1,15})?)\s+(?:[A-Z]\.?\s+)?"
     r"([A-Z][a-z]{2,20}(?:[-'][A-Z][a-z]{2,20})?)\b"
@@ -114,6 +115,21 @@ class Finding:
     name: str = ""          # "First Last" if a person's name was found next to it
     url: str = ""
     kind: str = "text"      # mailto | text | cfemail | obfuscated | jsonld | comment
+
+
+@dataclass
+class HarvestResult:
+    findings: list = field(default_factory=list)       # addresses on the company's own domain
+    foreign: dict = field(default_factory=dict)        # other domain -> findings published on the site
+
+    def mail_domains(self) -> list[str]:
+        """Candidate real mail domains: other corporate domains the site publishes, most common first."""
+        return sorted(self.foreign, key=lambda d: len(self.foreign[d]), reverse=True)
+
+
+_FREE_MAIL = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com",
+              "msn.com", "live.com", "me.com", "comcast.net", "att.net", "sbcglobal.net",
+              "protonmail.com", "mail.com"}
 
 
 @dataclass
@@ -235,17 +251,24 @@ def extract_from_html(html: str, domain: str | None = None, url: str = "") -> li
             addr = html_module.unescape(href[7:]).split("?")[0].split(",")[0]
             add(addr, _name_from_context(a, addr), "mailto")
 
-    # Layers 2/4/6: text, entities, [at] obfuscation, comments, footer
-    for tag in soup.find_all(True):
-        if tag.name in ("script", "style", "noscript"):
+    # Layers 2/4/6: text, entities, [at] obfuscation. Work from the text nodes that contain
+    # an "@"/[at] and widen to the surrounding card (<=700 chars) so the name stays close.
+    for node in soup.find_all(string=_AT_HINT_RE):
+        if isinstance(node, Comment) or node.parent is None or node.parent.name in ("script", "style", "noscript"):
             continue
-        # Only act on "leaf-ish" containers so the name stays close to the email
-        own_text = tag.get_text(" ", strip=True)
-        if not own_text or len(own_text) > 700 or "@" not in own_text and "[at]" not in own_text.lower() \
-                and "(at)" not in own_text.lower():
-            continue
-        for email in _emails_in_text(own_text):
-            add(email, _best_name_for(email, _find_names(own_text)), "text")
+        ctx = node.parent
+        text = ctx.get_text(" ", strip=True)
+        for _ in range(4):
+            parent = ctx.parent
+            if parent is None or parent.name in ("body", "html", "[document]"):
+                break
+            ptext = parent.get_text(" ", strip=True)
+            if len(ptext) > 700:
+                break
+            ctx, text = parent, ptext
+        names = _find_names(text)
+        for email in _emails_in_text(str(node)):
+            add(email, _best_name_for(email, names), "text")
 
     flat = soup.get_text(" ", strip=True)
     for email in _emails_in_text(flat):
@@ -253,7 +276,6 @@ def extract_from_html(html: str, domain: str | None = None, url: str = "") -> li
     for email in _emails_in_text(html_module.unescape(html)):
         add(email, "", "text")
 
-    from bs4 import Comment
     for c in soup.find_all(string=lambda s: isinstance(s, Comment)):
         for email in _EMAIL_RE.findall(str(c)):
             add(email, "", "comment")
@@ -453,7 +475,14 @@ def _sitemap_links(session: requests.Session, base: str, domain: str, timeout: f
 
 def harvest(domain: str, max_pages: int = 18, workers: int = 4,
             timeout: float = 8.0, deadline: float = 40.0) -> list[Finding]:
-    """Crawl the company's contact/team/about pages and return all findings."""
+    """Crawl the company's contact/team/about pages and return findings on its own domain."""
+    return harvest_ex(domain, max_pages, workers, timeout, deadline).findings
+
+
+def harvest_ex(domain: str, max_pages: int = 18, workers: int = 4,
+               timeout: float = 8.0, deadline: float = 40.0) -> HarvestResult:
+    """Like harvest(), but also reports corporate addresses on OTHER domains that the site
+    publishes (a company's website domain is often not its mail domain)."""
     domain = domain.lower().strip()
     session = requests.Session()
     session.headers.update(_HEADERS)
@@ -465,18 +494,26 @@ def harvest(domain: str, max_pages: int = 18, workers: int = 4,
             break
     if home is None:
         logger.info("Harvest: %s unreachable", domain)
-        return []
+        return HarvestResult()
 
     base = f"{urlparse(home.url).scheme}://{urlparse(home.url).hostname}"
     findings: dict[str, Finding] = {}
+    foreign: dict[str, dict[str, Finding]] = {}
 
     def merge(items: list[Finding]):
         for f in items:
-            prev = findings.get(f.email)
+            host = f.email.rsplit("@", 1)[-1]
+            bucket = findings if _domain_ok(f.email, domain) else                 foreign.setdefault(host, {}) if host not in _FREE_MAIL else None
+            if bucket is None:
+                continue
+            prev = bucket.get(f.email)
             if prev is None or (not prev.name and f.name):
-                findings[f.email] = f
+                bucket[f.email] = f
 
-    merge(extract_from_html(home.text, domain, home.url))
+    def extract(text: str, url: str) -> list[Finding]:
+        return extract_from_html(text, None, url)
+
+    merge(extract(home.text, home.url))
 
     urls: list[str] = []
     for u in _discover_links(home.text, home.url, domain) \
@@ -489,7 +526,7 @@ def harvest(domain: str, max_pages: int = 18, workers: int = 4,
 
     def fetch(u: str) -> list[Finding]:
         r = _get(session, u, timeout)
-        return extract_from_html(r.text, domain, r.url) if r is not None else []
+        return extract(r.text, r.url) if r is not None else []
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(fetch, u) for u in urls]
@@ -505,7 +542,7 @@ def harvest(domain: str, max_pages: int = 18, workers: int = 4,
     result = list(findings.values())
     logger.info("Harvest %s: %d page(s), %d address(es), %d with names",
                 domain, len(urls) + 1, len(result), sum(1 for f in result if f.name))
-    return result
+    return HarvestResult(result, {d: list(v.values()) for d, v in foreign.items()})
 
 
 def findings_to_json(findings: list[Finding]) -> list[dict]:

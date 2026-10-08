@@ -13,6 +13,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from emailer.smtp_verifier import get_mx
+
 _SKIP_DOMAINS = {
     "linkedin.com", "facebook.com", "twitter.com", "x.com",
     "glassdoor.com", "indeed.com", "bloomberg.com", "reuters.com",
@@ -47,12 +49,33 @@ _LEGAL_STRIP = re.compile(
 )
 
 
+_TITLE_WORDS = {
+    "engineer", "engineering", "manager", "geologist", "geophysicist", "geoscientist", "director",
+    "vp", "vice", "president", "senior", "staff", "principal", "analyst", "specialist", "lead",
+    "supervisor", "technician", "superintendent", "consultant", "coordinator", "associate",
+    "petrophysicist", "chief", "officer", "head", "region", "asset", "production", "reservoir",
+    "drilling", "completions", "completion", "operations", "geoscience", "exploration",
+    "development", "of", "and", "the", "petroleum", "subsurface", "facilities", "well",
+}
+
+
+def looks_like_job_title(name: str) -> bool:
+    """'STAFF ENGINEER', 'Region Manager', 'VP Engineering' ended up in the company column of
+    some pulls; they are roles, not employers."""
+    words = re.findall(r"[a-z]+", name.lower())
+    return bool(words) and all(w in _TITLE_WORDS for w in words)
+
+
 def find_domain(company_name: str) -> str:
     """
     Return the bare email domain for a company (e.g. 'chordenergy.com').
     Checks cache first, then validates a guessed domain, then falls back to DDG.
     """
     from emailer.domain_cache import get as cache_get
+
+    if looks_like_job_title(company_name):
+        logger.info("Skipping '%s': looks like a job title, not a company", company_name)
+        return ""
 
     cached = cache_get(company_name)
     if cached and cached.get("domain"):
@@ -62,15 +85,23 @@ def find_domain(company_name: str) -> str:
     # Build candidate slugs: full name (entity suffix stripped) + legal suffix stripped
     guesses = _build_guesses(company_name)
 
-    # HTTP-validate each guess. A guess only wins outright if the site also
-    # mentions the company (parked / unrelated domains resolve too).
-    resolving: list[str] = []
-    for guess in guesses:
-        if _domain_resolves(guess):
-            if _site_mentions_company(guess, company_name):
-                logger.info("Domain validated for %s: %s", company_name, guess)
-                return guess
-            resolving.append(guess)
+    # HTTP-validate each guess. A guess only wins if the site also looks like THIS
+    # company (parked / unrelated domains resolve too).
+    fallback = ""
+    for i, guess in enumerate(guesses):
+        final = _resolve(guess)
+        if not final:
+            continue
+        # A guess that redirects is really the destination site (scoutenergypartners.com -> scoutep.com)
+        for cand in ([final, guess] if final != guess else [guess]):
+            verdict = _site_check(cand, company_name)
+            # None = page unreadable (blocked / JS-only). The exact full-name domain is then
+            # accepted if it has a mail server; shortened guesses must be positively confirmed.
+            if verdict is True:
+                logger.info("Domain validated for %s: %s", company_name, cand)
+                return cand
+            if verdict is None and i == 0 and cand == guess and get_mx(cand) and not fallback:
+                fallback = cand              # plausible but unproven: search gets a chance to do better
 
     # Fall back to DDG search
     all_words  = [w.lower() for w in company_name.split() if len(w) > 2]
@@ -85,9 +116,7 @@ def find_domain(company_name: str) -> str:
         f'"{company_name}" energy company contact email',
     ]
 
-    best_domain = ""
-    best_score  = 0
-
+    scored: dict[str, int] = {}
     for query in queries:
         try:
             from ddgs import DDGS
@@ -95,29 +124,30 @@ def find_domain(company_name: str) -> str:
                 results = list(ddgs.text(query, max_results=10))
             for r in results:
                 domain, score = _score_result(r, all_words, key_words, expected_slugs)
-                if score > best_score:
-                    best_score  = score
-                    best_domain = domain
+                if domain and score > scored.get(domain, 0):
+                    scored[domain] = score
         except Exception as e:
             logger.warning("Domain search error: %s", e)
 
-        if best_score >= 10:
+        if scored and max(scored.values()) >= 10:
             break
 
-    if best_domain and best_score > 0:
-        logger.info("Domain via DDG for %s: %s (score %d)", company_name, best_domain, best_score)
-        return best_domain
+    # Validate the best few, not just the top one
+    for domain, score in sorted(scored.items(), key=lambda kv: -kv[1])[:3]:
+        verdict = _site_check(domain, company_name)
+        # True = looks like this company. None = unreadable: trust only a decent match with a mail server
+        if verdict is True or (verdict is None and score >= 3 and get_mx(domain)):
+            logger.info("Domain via DDG for %s: %s (score %d)", company_name, domain, score)
+            return domain
+        logger.info("Rejected DDG domain %s for %s", domain, company_name)
 
-    # Resolving guess that never mentioned the company beats a blind guess
-    if resolving:
-        logger.info("Domain weakly validated for %s: %s", company_name, resolving[0])
-        return resolving[0]
+    if fallback:
+        logger.info("Domain for %s: %s (unreadable site, has mail server)", company_name, fallback)
+        return fallback
 
-    # Last resort: return unvalidated first guess
-    if guesses:
-        logger.info("Domain guessed (unvalidated) for %s: %s", company_name, guesses[0])
-        return guesses[0]
-
+    # Nothing validated. Better to say "no domain" (user can set it via Edit Domain Cache)
+    # than to email strangers at an unrelated company's domain.
+    logger.info("No validated domain for %s", company_name)
     return ""
 
 
@@ -142,48 +172,87 @@ def _build_guesses(company_name: str) -> list[str]:
     return guesses
 
 
-def _domain_resolves(domain: str) -> bool:
+_SLD = {"co", "com", "org", "net", "gov", "edu", "ac"}
+
+
+def registrable(host: str) -> str:
+    """corporate.exxonmobil.com -> exxonmobil.com ; www.foo.co.uk -> foo.co.uk"""
+    labels = host.lower().strip(".").split(".")
+    if len(labels) <= 2:
+        return ".".join(labels)
+    if len(labels[-1]) == 2 and labels[-2] in _SLD:
+        return ".".join(labels[-3:])
+    return ".".join(labels[-2:])
+
+
+def _resolve(domain: str) -> str | None:
     """
-    Quick HEAD request to check if a domain serves any HTTP response.
-    Returns True even for 4xx/5xx — we just need to confirm the domain exists.
+    Follow redirects from the domain's homepage. Returns the final host (www. stripped), or
+    None if nothing answers. 4xx/5xx still count as "exists" - we only need to know it is real.
     """
-    try:
-        import requests
-        resp = requests.head(
-            f"https://{domain}", timeout=6, allow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        return resp.status_code < 600
-    except Exception:
+    import requests
+    from urllib.parse import urlparse
+    for scheme in ("https", "http"):
         try:
-            import requests
-            resp = requests.head(
-                f"http://{domain}", timeout=6, allow_redirects=True,
-                headers={"User-Agent": "Mozilla/5.0"},
-            )
-            return resp.status_code < 600
+            resp = requests.head(f"{scheme}://{domain}", timeout=6, allow_redirects=True,
+                                 headers={"User-Agent": "Mozilla/5.0"})
+            return registrable(urlparse(resp.url).hostname or domain)
         except Exception:
-            return False
+            continue
+    return None
 
 
-def _site_mentions_company(domain: str, company_name: str) -> bool:
-    """True if the homepage <title>/body text contains the company's distinctive words."""
+def _domain_resolves(domain: str) -> bool:
+    return _resolve(domain) is not None
+
+
+_INDUSTRY_RE = re.compile(
+    r"\b(oil|gas|petroleum|energy|drilling|exploration|midstream|upstream|minerals?|royalt\w*|"
+    r"wellbore|reservoirs?|permian|bakken|eagle ford|e&p|hydrocarbons?|barrels|boe|operator)\b"
+)
+_LABEL_INDUSTRY_RE = re.compile(
+    r"(energy|oil|gas|petroleum|resources|exploration|minerals|midstream|royalt|operating|production|drilling)")
+_PARKED_MARKERS = ("domain is for sale", "buy this domain", "parked free",
+                   "this domain may be for sale", "sedoparking", "hugedomains")
+
+
+def _site_check(domain: str, company_name: str):
+    """
+    True  - homepage looks like THIS oil & gas company: every distinctive word of the name
+            appears AND the page talks about oil/gas/energy (a lone distinctive word such as
+            "Verdad" or "Magnolia" matches unrelated real-estate / lifestyle sites otherwise)
+    False - page fetched but does not look like the company (or is parked)
+    None  - site unreachable / blocked, cannot tell
+    """
     words = [w for w in re.findall(r"[a-z0-9]+", company_name.lower())
              if len(w) > 2 and w not in _GENERIC_WORDS]
     if not words:
         words = [w for w in re.findall(r"[a-z0-9]+", company_name.lower()) if len(w) > 2]
     if not words:
-        return True
+        return False
     try:
         import requests
         r = requests.get(f"https://{domain}", timeout=8, headers={"User-Agent": "Mozilla/5.0"})
-        text = r.text[:60000].lower()
+        if r.status_code >= 400:
+            return None
+        text = r.text[:80000].lower()
     except Exception:
+        return None
+    if any(p in text for p in _PARKED_MARKERS):
         return False
-    if any(p in text for p in ("domain is for sale", "buy this domain", "parked free",
-                               "this domain may be for sale", "sedoparking")):
-        return False
-    return any(w in text for w in words)
+    label = re.sub(r"[^a-z0-9]", "", domain.split(".")[0].lower())
+    # silverhillenergy.com for "Silver Hill Energy Partners": the name AND an industry word are in
+    # the domain itself - strong enough even when the page is a JS app with no readable text.
+    if all(w in label for w in words) and _LABEL_INDUSTRY_RE.search(label):
+        return True
+    if len(text) < 2500:
+        return None                      # splash page / JS app: nothing to judge by
+    named = all(w in text for w in words) or all(w in label for w in words)
+    return named and bool(_INDUSTRY_RE.search(text))
+
+
+def _site_mentions_company(domain: str, company_name: str) -> bool:
+    return _site_check(domain, company_name) is True
 
 
 def _build_company_slugs(company_name: str) -> set[str]:

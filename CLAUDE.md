@@ -147,9 +147,22 @@ Based on analysis of 941 domains / 2,978 contacts from HubSpot CRM data:
 1. HubSpot KB (instant, 941 domains). A stale cache entry that disagrees with the KB is demoted to `pattern2`.
 2. Website harvest (`site_harvester`): every published address with the nearby person name; a weighted vote
    decides the format. name+email pair = proof (weight 3), dot-style hint without name = weak (1).
-3. emailformat.com
+3. email-format.com (the old emailformat.com has a broken certificate; needs >=60% share)
 4. Search snippets (all `@domain` hits, same voting)
+Only name+email evidence (score >= 3) counts. Lone dot-style hints (`j.smith@`) were right ~1 in 3 in
+benchmarks against the HubSpot KB, so they are ignored. Benchmark: 5/5 website-proof and 4/4 search-proof
+inferences matched the KB.
 Harvest results (published addresses + names) are cached 14 days in `domain_cache.json`.
+
+### Domain resolution (`domain_finder` + `Enricher._resolve_domain`)
+- Job titles in the company column ("STAFF ENGINEER") -> no domain (never invent emails for them)
+- A guessed domain is accepted only if the page looks like THIS oil & gas company (name words + oil/gas
+  terms, word-boundary match; or name + industry word in the domain itself). Redirects are followed to
+  the registrable domain. Unreadable sites are only trusted with a mail server (MX).
+- Web domain != mail domain is handled: if the site publishes addresses on another domain (Magnolia ->
+  mgyoil.com) or search shows real addresses on one (Scout -> scoutep.com), that domain is used.
+- Nothing validated -> "no domain" (fix via Settings -> Edit Domain Cache), never a blind guess.
+- Companies are researched in background threads (`Enricher.prefetch`) while earlier ones are verified.
 
 ### Enrichment Engine (`engine.Enricher`) — one code path
 1. Address published online for this exact person (nickname-aware: Mike = Michael) -> `found-on-site` (High)
@@ -160,7 +173,7 @@ CLI scripts: `_generate_emails.py` (no verification) and `_pipeline.py` (full ru
 API keys for the CLIs come from `credentials.json`.
 
 ### Tests
-`py -3 -m unittest discover tests` (offline, ~2s). `tests/e2e_run.py "Company"` and `tests/gui_smoke.py`
+`py -3 -m unittest discover -s tests -t .` (offline, ~3s). `tests/e2e_run.py "Company"` and `tests/gui_smoke.py`
 exercise the real workers/GUI against the network using a scratch output dir (`LEADSCOUT_OUTPUT_DIR`).
 
 ### LinkedIn Scraping
