@@ -1,7 +1,27 @@
 import re
 
 # All engineer and geoscientist titles to search for
+# Broad, high-yield titles first: results for "geologist" already include senior/
+# staff/exploration geologists, so the narrow variants rarely add anyone new.
 TARGET_TITLES = [
+    "geologist",
+    "geophysicist",
+    "petroleum engineer",
+    "reservoir engineer",
+    "geoscientist",
+    "drilling engineer",
+    "completions engineer",
+    "production engineer",
+    "petrophysicist",
+    "asset manager",
+    "vp geoscience",
+    "vp exploration",
+    "vp engineering",
+    "chief geoscientist",
+]
+
+# Narrow variants - only searched when the broad pass found few people
+EXTRA_TITLES = [
     # Engineering
     "petroleum engineer",
     "reservoir engineer",
@@ -79,14 +99,14 @@ def generate_variants(company_name: str) -> list[str]:
     return unique[:3]
 
 
-def build_queries(company_name: str) -> list[str]:
+def build_query_plan(company_name: str) -> list[list[str]]:
     """
-    Build all LinkedIn dork queries for a company.
-    Each query targets one job title across all company name variants.
+    Queries grouped per company-name variant, broad titles first then narrow ones.
+    The worker stops a group early when it stops producing new people.
     """
-    variants = generate_variants(company_name)
-    queries: list[str] = []
-    for variant in variants:
-        for title in TARGET_TITLES:
-            queries.append(f'site:linkedin.com/in "{variant}" "{title}"')
-    return queries
+    titles: list[str] = []
+    for t in TARGET_TITLES + EXTRA_TITLES:
+        if t not in titles:
+            titles.append(t)
+    return [[f'site:linkedin.com/in "{v}" "{t}"' for t in titles]
+            for v in generate_variants(company_name)]

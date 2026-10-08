@@ -66,11 +66,23 @@ def get_domain(email):
     return email.split("@", 1)[1].lower()
 
 
+_MX_CACHE = {}
+_CATCHALL_CACHE = {}
+
+
 def get_mx_records(domain, timeout=DEFAULT_TIMEOUT):
     """
     Returns a list of (priority, host) tuples sorted by priority,
-    or an empty list if no MX records exist.
+    or an empty list if no MX records exist. Cached per domain for the session
+    (a company is probed once per candidate; DNS was being re-queried each time).
     """
+    domain = domain.lower()
+    if domain not in _MX_CACHE:
+        _MX_CACHE[domain] = _lookup_mx(domain, timeout)
+    return _MX_CACHE[domain]
+
+
+def _lookup_mx(domain, timeout=DEFAULT_TIMEOUT):
     try:
         resolver = dns.resolver.Resolver()
         resolver.timeout = timeout
@@ -110,17 +122,46 @@ def smtp_probe(email, mx_host, helo_domain=DEFAULT_HELO_DOMAIN,
         server.connect(mx_host, 25)
         server.helo(helo_domain)
         server.mail(mail_from)
-        code, _ = server.rcpt(email)
-        server.quit()
-
-        if code == 250:
-            return "accepted"
-        elif code in (550, 551, 553, 554):
-            return "rejected"
-        else:
-            return "unknown"
+        code, msg = server.rcpt(email)
+        try:
+            server.quit()
+        except Exception:
+            pass
+        return classify_rcpt(code, msg)
     except (socket.timeout, socket.error, smtplib.SMTPException):
         return "unknown"
+
+
+# 5.1.x = bad destination mailbox. Everything else in the 5xx range (5.7.x policy, "blocked
+# using Spamhaus", "access denied", greylisting...) says nothing about whether the MAILBOX exists.
+_BAD_MAILBOX_RE = re.compile(
+    r"\b5\.1\.[0-9]\b|user unknown|unknown user|no such (user|recipient|mailbox)|"
+    r"does not exist|recipient (not found|rejected)|invalid (recipient|mailbox)|"
+    r"mailbox (unavailable|not found)|address rejected|unrouteable",
+    re.IGNORECASE,
+)
+_HARD_MAILBOX_RE = re.compile(r"\b5\.1\.[0-9]+\b")
+_POLICY_RE = re.compile(
+    r"\b5\.7\.[0-9]\b|spamhaus|blocked|blacklist|block ?list|denied|reputation|"
+    r"policy|spam|not authorized|relay|sender verify",
+    re.IGNORECASE,
+)
+
+
+def classify_rcpt(code, msg):
+    """Map an SMTP RCPT TO reply to 'accepted' | 'rejected' | 'unknown'."""
+    text = msg.decode(errors="replace") if isinstance(msg, bytes) else str(msg)
+    if code in (250, 251):
+        return "accepted"
+    if code in (550, 551, 553, 554):
+        if _HARD_MAILBOX_RE.search(text):
+            return "rejected"           # enhanced status 5.1.x: the mailbox itself is bad
+        if _POLICY_RE.search(text):
+            return "unknown"            # our IP is blocked/filtered - says nothing about the mailbox
+        if _BAD_MAILBOX_RE.search(text):
+            return "rejected"
+        return "unknown"                # unexplained 5xx: don't condemn a real address
+    return "unknown"
 
 
 def check_catch_all(domain, mx_host, helo_domain=DEFAULT_HELO_DOMAIN,
@@ -131,10 +172,14 @@ def check_catch_all(domain, mx_host, helo_domain=DEFAULT_HELO_DOMAIN,
     which means an 'accepted' result on the real address is not reliable
     proof that mailbox exists.
     """
+    key = domain.lower()
+    if key in _CATCHALL_CACHE:
+        return _CATCHALL_CACHE[key]
     fake_local = _random_localpart()
     fake_email = f"{fake_local}@{domain}"
     result = smtp_probe(fake_email, mx_host, helo_domain, mail_from, timeout)
-    return result == "accepted"
+    _CATCHALL_CACHE[key] = result == "accepted"
+    return _CATCHALL_CACHE[key]
 
 
 def verify_email(email, helo_domain=DEFAULT_HELO_DOMAIN,

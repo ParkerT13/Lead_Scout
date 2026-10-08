@@ -62,11 +62,15 @@ def find_domain(company_name: str) -> str:
     # Build candidate slugs: full name (entity suffix stripped) + legal suffix stripped
     guesses = _build_guesses(company_name)
 
-    # HTTP-validate each guess — the one that actually resolves wins
+    # HTTP-validate each guess. A guess only wins outright if the site also
+    # mentions the company (parked / unrelated domains resolve too).
+    resolving: list[str] = []
     for guess in guesses:
         if _domain_resolves(guess):
-            logger.info("Domain validated for %s: %s", company_name, guess)
-            return guess
+            if _site_mentions_company(guess, company_name):
+                logger.info("Domain validated for %s: %s", company_name, guess)
+                return guess
+            resolving.append(guess)
 
     # Fall back to DDG search
     all_words  = [w.lower() for w in company_name.split() if len(w) > 2]
@@ -103,6 +107,11 @@ def find_domain(company_name: str) -> str:
     if best_domain and best_score > 0:
         logger.info("Domain via DDG for %s: %s (score %d)", company_name, best_domain, best_score)
         return best_domain
+
+    # Resolving guess that never mentioned the company beats a blind guess
+    if resolving:
+        logger.info("Domain weakly validated for %s: %s", company_name, resolving[0])
+        return resolving[0]
 
     # Last resort: return unvalidated first guess
     if guesses:
@@ -155,6 +164,26 @@ def _domain_resolves(domain: str) -> bool:
             return resp.status_code < 600
         except Exception:
             return False
+
+
+def _site_mentions_company(domain: str, company_name: str) -> bool:
+    """True if the homepage <title>/body text contains the company's distinctive words."""
+    words = [w for w in re.findall(r"[a-z0-9]+", company_name.lower())
+             if len(w) > 2 and w not in _GENERIC_WORDS]
+    if not words:
+        words = [w for w in re.findall(r"[a-z0-9]+", company_name.lower()) if len(w) > 2]
+    if not words:
+        return True
+    try:
+        import requests
+        r = requests.get(f"https://{domain}", timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        text = r.text[:60000].lower()
+    except Exception:
+        return False
+    if any(p in text for p in ("domain is for sale", "buy this domain", "parked free",
+                               "this domain may be for sale", "sedoparking")):
+        return False
+    return any(w in text for w in words)
 
 
 def _build_company_slugs(company_name: str) -> set[str]:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
-from scraper.query_builder import build_queries, generate_variants
+from scraper.query_builder import build_query_plan, generate_variants
 from scraper.parser import parse_result, is_valid_contact
 from scraper.engines import duckduckgo, bing, google
 
@@ -18,6 +18,10 @@ _DDG_ZERO_THRESHOLD = 3
 _QUERY_DELAY = (3.5, 7.5)
 # Seconds between companies
 _COMPANY_DELAY = (15, 25)
+# Stop a company-name variant after this many queries in a row add nobody new
+_DRY_STREAK_STOP = 8
+# Search the 2nd/3rd name variant only if the first one found fewer than this many people
+_MIN_FOR_SKIP_VARIANTS = 6
 # Seconds between engine fallback attempts within a single query
 _FALLBACK_DELAY = (3, 6)
 
@@ -71,72 +75,60 @@ class SearchWorker(QThread):
     # ── Per-company processing ───────────────────────────────────────────
 
     def _process_company(self, company: str) -> int:
-        queries      = build_queries(company)
+        plan         = build_query_plan(company)
+        queries_total = sum(len(g) for g in plan)
         seen_urls: set[str] = set()
         total        = 0
         ddg_zeros    = 0
         prefer_bing  = False  # DDG (via Yahoo fallback) is primary; Bing is currently CAPTCHA-blocked
 
         variant_lowers = {v.lower() for v in generate_variants(company)}
-        # First significant word of each variant (≥4 chars) for truncation-tolerant
+        # First significant word of each variant (>=4 chars) for truncation-tolerant
         # " at <word>..." matching.  Used only for title-specific queries.
         first_words = {v.split()[0] for v in variant_lowers if len(v.split()[0]) >= 4}
 
-        for i, query in enumerate(queries):
+        done_q = 0
+        for gi, queries in enumerate(plan):
             if self._stop:
                 break
+            if gi > 0 and total >= _MIN_FOR_SKIP_VARIANTS:
+                done_q += len(queries)
+                continue                     # first variant already found plenty
+            dry = 0
+            for query in queries:
+                if self._stop:
+                    break
+                done_q += 1
+                self.company_progress.emit(company, done_q, queries_total)
+                engine_label = "Bing" if prefer_bing else "DDG"
+                self.status_update.emit(
+                    f"[{company}]  Query {done_q}/{queries_total}  |  Engine: {engine_label}  |  Found: {total}"
+                )
 
-            self.company_progress.emit(company, i + 1, len(queries))
-            engine_label = "Bing" if prefer_bing else "DDG"
-            self.status_update.emit(
-                f"[{company}]  Query {i+1}/{len(queries)}  |  Engine: {engine_label}  |  Found: {total}"
-            )
+                results = self._search(query, prefer_bing)
 
-            results = self._search(query, prefer_bing)
+                if not results:
+                    ddg_zeros += 1
+                    if not prefer_bing and ddg_zeros >= _DDG_ZERO_THRESHOLD:
+                        prefer_bing = True
+                        self.status_update.emit(
+                            f"[{company}]  DDG dry for {_DDG_ZERO_THRESHOLD} queries - switching to Bing."
+                        )
+                else:
+                    ddg_zeros = 0
 
-            if not results:
-                ddg_zeros += 1
-                if not prefer_bing and ddg_zeros >= _DDG_ZERO_THRESHOLD:
-                    prefer_bing = True
-                    self.status_update.emit(
-                        f"[{company}]  DDG dry for {_DDG_ZERO_THRESHOLD} queries — switching to Bing."
-                    )
-            else:
-                ddg_zeros = 0
+                new_here = 0
+                for r in results:
+                    contact = self._accept(r, company, variant_lowers, first_words, seen_urls)
+                    if contact:
+                        self.contact_found.emit(contact)
+                        total += 1
+                        new_here += 1
 
-            for r in results:
-                href = r.get("href", "")
-                if "linkedin.com/in/" not in href:
-                    continue
-                url = href.split("?")[0].rstrip("/")
-                if url in seen_urls:
-                    continue
-
-                result_title = r.get("title", "")
-                result_lower = result_title.lower()
-
-                # Company name must be linked to this person as current employer.
-                # Full match: "Texas Standard Oil" anywhere in title.
-                # Truncation match: " at Texas" when Yahoo truncates " at Texas..."
-                # This prevents false positives where someone just mentions the company
-                # in past experience, while handling Yahoo's title truncation.
-                full_match = any(v in result_lower for v in variant_lowers)
-                trunc_match = any(f" at {fw}" in result_lower for fw in first_words)
-                if not full_match and not trunc_match:
-                    continue
-
-                seen_urls.add(url)
-
-                contact = parse_result(result_title, url, r.get("body", ""))
-                contact["company"]     = company
-                contact["source"]      = r.get("_engine", "unknown")
-                contact["date_pulled"] = datetime.now().strftime("%Y-%m-%d")
-
-                if is_valid_contact(contact, company):
-                    self.contact_found.emit(contact)
-                    total += 1
-
-            time.sleep(random.uniform(*_QUERY_DELAY))
+                dry = 0 if new_here else dry + 1
+                if total and dry >= _DRY_STREAK_STOP:
+                    break                    # this variant is exhausted
+                time.sleep(random.uniform(*_QUERY_DELAY))
 
         # If title-specific queries found nothing, try a broad company search
         if total == 0 and not self._stop:
@@ -144,6 +136,34 @@ class SearchWorker(QThread):
             total += self._broad_fallback(company, seen_urls)
 
         return total
+
+    def _accept(self, r: dict, company: str, variant_lowers: set, first_words: set,
+                seen_urls: set) -> dict | None:
+        """Turn one search result into a validated contact, or None."""
+        href = r.get("href", "")
+        if "linkedin.com/in/" not in href:
+            return None
+        url = href.split("?")[0].rstrip("/")
+        if url in seen_urls:
+            return None
+
+        result_title = r.get("title", "")
+        result_lower = result_title.lower()
+
+        # Company name must be linked to this person as current employer.
+        # Full match: "Texas Standard Oil" anywhere in title.
+        # Truncation match: " at Texas" when Yahoo truncates " at Texas..."
+        full_match = any(v in result_lower for v in variant_lowers)
+        trunc_match = any(f" at {fw}" in result_lower for fw in first_words)
+        if not full_match and not trunc_match:
+            return None
+
+        seen_urls.add(url)
+        contact = parse_result(result_title, url, r.get("body", ""))
+        contact["company"]     = company
+        contact["source"]      = r.get("_engine", "unknown")
+        contact["date_pulled"] = datetime.now().strftime("%Y-%m-%d")
+        return contact if is_valid_contact(contact, company) else None
 
     # ── Broad fallback ───────────────────────────────────────────────────
 
@@ -175,7 +195,6 @@ class SearchWorker(QThread):
         matching anyone named Cabral who works in energy).
         """
         variants = generate_variants(company)
-        company_lower = company.lower()
         # Also accept the stripped variant (e.g. "Franklin Mountain" for "Franklin Mountain Energy")
         variant_lowers = {v.lower() for v in variants}
         count = 0

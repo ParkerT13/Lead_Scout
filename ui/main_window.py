@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtWidgets import (
+    QToolButton,
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QLineEdit, QPushButton, QLabel, QProgressBar, QFileDialog,
@@ -20,7 +21,8 @@ from PySide6.QtCore import Qt, Slot, QUrl, QTimer, QObject, Signal
 from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequence, QAction, QIcon
 
 from scraper.worker import SearchWorker
-from emailer.worker import EmailWorker, ApiVerifyWorker, DROP_STATUSES
+from emailer.worker import EmailWorker, ApiVerifyWorker
+from emailer.engine import DROP_STATUSES
 from emailer.generator import generate_candidates
 from emailer.domain_cache import all_entries as cache_all, get as cache_get, put as cache_put
 from emailer.smtp_verifier import port25_available
@@ -111,6 +113,8 @@ _EMP_COLORS = {
 
 _EMAIL_COLORS = {
     "verified":              "#2E7D32",
+    "found-on-site":         "#1B5E20",
+    "pattern-confirmed":     "#EF6C00",
     "catch-all-confirmed":   "#E65100",
     "catch-all-risky":       "#C62828",
     "unverified":            "#888888",
@@ -224,7 +228,7 @@ _SENIORITY_TIERS = [
 
 
 def _confidence(status: str) -> str:
-    if status in ("verified",):
+    if status in ("verified", "found-on-site"):
         return "High"
     if status in ("catch-all-confirmed", "pattern-confirmed", "emailformat", "hubspot"):
         return "Medium"
@@ -475,6 +479,12 @@ class MainWindow(QMainWindow):
         root = QVBoxLayout(tab)
         root.setSpacing(8)
         root.setContentsMargins(10, 10, 10, 10)
+        howto = QLabel("<b>How to use:</b> &nbsp;1) Type a company name and press Enter "
+                       "(or use Paste List) &nbsp;&rarr;&nbsp; 2) Click <b>Find Contacts &amp; Emails</b> "
+                       "&nbsp;&rarr;&nbsp; 3) Open the finished CSV from the \"All done\" box.")
+        howto.setTextFormat(Qt.RichText)
+        howto.setStyleSheet("color: #888; font-size: 12px; padding: 2px 0 4px 2px;")
+        root.addWidget(howto)
         root.addLayout(self._build_toolbar())
         root.addLayout(self._build_filter_row())
         root.addLayout(self._build_search_bar())
@@ -723,11 +733,16 @@ class MainWindow(QMainWindow):
             btn.clicked.connect(slot)
             row.addWidget(btn)
 
-        self._btn_start = QPushButton("▶  Start")
-        self._btn_start.setObjectName("btn_start")
-        self._btn_start.setMinimumHeight(38)
-        self._btn_start.clicked.connect(self._start_search)
-        row.addWidget(self._btn_start)
+        # ONE obvious button does everything: pull contacts -> find/verify emails -> save CSV
+        self._btn_pipeline = QPushButton("▶  Find Contacts && Emails")
+        self._btn_pipeline.setObjectName("btn_pipeline")
+        self._btn_pipeline.setMinimumHeight(38)
+        self._btn_pipeline.setToolTip(
+            "Does everything: finds the people at each company in the queue, works out and checks "
+            "their email addresses, and saves a ready-to-use CSV."
+        )
+        self._btn_pipeline.clicked.connect(self._pipeline_start)
+        row.addWidget(self._btn_pipeline)
 
         self._btn_stop = QPushButton("■  Stop")
         self._btn_stop.setObjectName("btn_stop")
@@ -736,28 +751,36 @@ class MainWindow(QMainWindow):
         self._btn_stop.clicked.connect(self._stop_search)
         row.addWidget(self._btn_stop)
 
+        # Advanced one-step actions live in a menu; the real buttons stay (hidden) so the
+        # existing enable/disable/relabel logic keeps working.
+        self._btn_start = QPushButton("Pull contacts only")
+        self._btn_start.setObjectName("btn_start")
+        self._btn_start.clicked.connect(self._start_search)
         self._btn_verify = QPushButton("Verify Employment")
         self._btn_verify.setObjectName("btn_verify")
-        self._btn_verify.setMinimumHeight(38)
         self._btn_verify.setToolTip(
             "Check each contact's LinkedIn profile to confirm they still work at the target company."
         )
         self._btn_verify.clicked.connect(self._toggle_verify)
-        row.addWidget(self._btn_verify)
+        self._li_login_btn = QPushButton("LinkedIn Login")
+        self._li_login_btn.setToolTip("Open browser to log into LinkedIn and save the session.")
+        self._li_login_btn.clicked.connect(self._linkedin_relogin)
+        for hidden in (self._btn_start, self._btn_verify, self._li_login_btn):
+            hidden.setVisible(False)
+            row.addWidget(hidden)
 
-        self._btn_pipeline = QPushButton("Run Full Pipeline")
-        self._btn_pipeline.setObjectName("btn_pipeline")
-        self._btn_pipeline.setMinimumHeight(38)
-        self._btn_pipeline.setToolTip(
-            "Pull contacts → detect email patterns → generate and verify all emails → export viable contacts."
-        )
-        self._btn_pipeline.clicked.connect(self._pipeline_start)
-        row.addWidget(self._btn_pipeline)
-
-        btn_export = QPushButton("Export CSV")
-        btn_export.setMinimumHeight(38)
-        btn_export.clicked.connect(self._export_csv)
-        row.addWidget(btn_export)
+        more = QToolButton()
+        more.setText("More ▾")
+        more.setMinimumHeight(38)
+        more.setPopupMode(QToolButton.InstantPopup)
+        menu = QMenu(more)
+        menu.addAction("Pull contacts only (no emails)", self._btn_start.click)
+        menu.addAction("Verify employment on LinkedIn", self._btn_verify.click)
+        menu.addAction("LinkedIn login", self._li_login_btn.click)
+        menu.addSeparator()
+        menu.addAction("Export contacts to CSV", self._export_csv)
+        more.setMenu(menu)
+        row.addWidget(more)
 
         # LinkedIn session health indicator
         row.addSpacing(12)
@@ -770,11 +793,6 @@ class MainWindow(QMainWindow):
         )
         row.addWidget(self._li_status_label)
 
-        self._li_login_btn = QPushButton("LinkedIn Login")
-        self._li_login_btn.setMaximumHeight(30)
-        self._li_login_btn.setToolTip("Open browser to log into LinkedIn and save the session.")
-        self._li_login_btn.clicked.connect(self._linkedin_relogin)
-        row.addWidget(self._li_login_btn)
 
         return row
 
@@ -1082,6 +1100,7 @@ class MainWindow(QMainWindow):
         self._crm_status_checks: dict[str, QCheckBox] = {}
         statuses = [
             ("verified",            "Verified (SMTP / API confirmed)",  True),
+            ("found-on-site",       "Found on company website",         True),
             ("catch-all-confirmed", "Catch-all confirmed",              True),
             ("catch-all-risky",     "Catch-all risky",                  False),
             ("unverified",          "Unverified (port 25 blocked)",      True),
@@ -1339,7 +1358,8 @@ class MainWindow(QMainWindow):
         contacts = self._crm_source_contacts()
         to_check = [c for c in contacts
                     if c.get("email") and c.get("email_status", "") in
-                    {"bounced", "unverified", "unknown", "catch-all-risky"}]
+                    {"bounced", "unverified", "unknown", "catch-all-risky",
+                     "pattern-confirmed", "pattern-ddg", "best-guess"}]
 
         if not to_check:
             self._crm_status_label.setText("Nothing to re-verify — all emails already confirmed.")
@@ -1804,9 +1824,21 @@ class MainWindow(QMainWindow):
     # ── Search control ───────────────────────────────────────────────────────
 
     def _pipeline_start(self):
+        if not self._input.text().strip() and not any(
+            self._company_status.get(self._queue.item(i).data(Qt.UserRole)) == "pending"
+            for i in range(self._queue.count())
+        ):
+            self.statusBar().showMessage("Type a company name above and press Enter (or Paste List), then click again.")
+            self._input.setFocus()
+            return
+        if self._input.text().strip():
+            self._add_company()              # typed but not added yet - add it for them
         self._pipeline_mode = True
         self._btn_pipeline.setEnabled(False)
         self._start_search()
+        if not self._btn_stop.isEnabled():   # nothing started (e.g. no pending companies)
+            self._pipeline_mode = False
+            self._btn_pipeline.setEnabled(True)
 
     def _start_search(self):
         pending = [
@@ -1836,6 +1868,8 @@ class MainWindow(QMainWindow):
     def _stop_search(self):
         if self._worker:
             self._worker.stop()
+        if self._email_worker and self._email_worker.isRunning():
+            self._email_worker.stop()
         self._btn_stop.setEnabled(False)
         self.statusBar().showMessage("Stopping after current query completes…")
 
@@ -1977,10 +2011,15 @@ class MainWindow(QMainWindow):
         self._puller_status.setText(msg)
         self.statusBar().showMessage(msg)
         if self._pipeline_mode and self._contacts:
-            self.statusBar().showMessage(f"{len(self._contacts)} contacts pulled. Starting email pipeline…")
+            self.statusBar().showMessage(f"{len(self._contacts)} contacts pulled. Finding emails…")
             self._tabs.setCurrentIndex(1)
             self._email_load_from_puller()
-            self._email_start()
+            self._email_start(skip_prompt=True)
+            self._btn_stop.setEnabled(True)      # one Stop button covers both phases
+        elif self._pipeline_mode:
+            self._pipeline_mode = False
+            self._btn_pipeline.setEnabled(True)
+            self.statusBar().showMessage("No contacts found - try a different spelling of the company name.")
 
     def _set_queue_status(self, company: str, status: str, suffix: str = ""):
         icon, color = _QUEUE_STATUS[status]
@@ -2101,7 +2140,7 @@ class MainWindow(QMainWindow):
 
     # ── Email tab: enrichment ────────────────────────────────────────────────
 
-    def _email_start(self):
+    def _email_start(self, skip_prompt: bool = False):
         if not self._email_contacts:
             self._email_status.setText("Load contacts first.")
             return
@@ -2109,7 +2148,9 @@ class MainWindow(QMainWindow):
         # Skip already-enriched?
         already = [c for c in self._email_contacts if c.get("email", "").strip()]
         to_enrich = self._email_contacts
-        if already:
+        if already and skip_prompt:
+            to_enrich = [c for c in self._email_contacts if not c.get("email", "").strip()]
+        elif already:
             reply = QMessageBox.question(
                 self, "Skip Enriched Contacts",
                 f"{len(already)} contact(s) already have an email address.\n\n"
@@ -2266,6 +2307,7 @@ class MainWindow(QMainWindow):
     def _on_email_all_done(self):
         self._email_btn_start.setEnabled(True)
         self._email_btn_stop.setEnabled(False)
+        self._btn_stop.setEnabled(False)
         self._email_progress.setVisible(False)
         self._email_btn_retry.setEnabled(
             any(c.get("email_status", "") in DROP_STATUSES for c in self._email_enriched)
@@ -2297,10 +2339,26 @@ class MainWindow(QMainWindow):
                 writer = csv.DictWriter(f, fieldnames=fields)
                 writer.writeheader()
                 writer.writerows([{k: c.get(k, "") for k in fields} for c in viable])
-            msg = (f"Pipeline complete — {len(viable)} viable contacts saved to "
-                   f"{out_path.name} | {dropped} dropped")
+            ready = sum(1 for c in viable if c.get("confidence") in ("High", "Medium"))
+            check = len(viable) - ready
+            msg = (f"Done! {len(viable)} contacts with emails saved to {out_path.name} "
+                   f"({ready} solid, {check} worth double-checking, {dropped} skipped)")
             self._email_status.setText(msg)
             self.statusBar().showMessage(msg)
+            box = QMessageBox(self)
+            box.setWindowTitle("All done")
+            box.setIcon(QMessageBox.Information)
+            box.setText(f"<b>{len(viable)} contacts are ready.</b>")
+            box.setInformativeText(
+                f"{ready} have solid emails (published, verified or a proven company format).\n"
+                f"{check} are best guesses - run them through a verifier before a big send.\n"
+                f"{dropped} had no usable email and were left out.\n\n"
+                f"Saved as {out_path.name}")
+            open_btn = box.addButton("Open Folder", QMessageBox.AcceptRole)
+            box.addButton("Close", QMessageBox.RejectRole)
+            box.exec()
+            if box.clickedButton() is open_btn:
+                self._open_output_folder()
         except Exception as e:
             self._email_status.setText(f"Pipeline complete but export failed: {e}")
 

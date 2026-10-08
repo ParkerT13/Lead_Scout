@@ -12,6 +12,53 @@ If pattern unknown   -> all 8 variants in frequency order for SMTP testing
 """
 
 import re
+import unicodedata
+
+PATTERNS = [
+    "first.last", "flast", "firstlast", "first", "f.last", "first.l",
+    "last.first", "lfirst", "first_last", "first-last", "last", "lastf",
+]
+
+# nickname -> formal names (people list "Mike", mailboxes are often "michael")
+_NICKNAMES = {
+    "bob": ["robert"], "rob": ["robert"], "bobby": ["robert"], "bill": ["william"],
+    "will": ["william"], "billy": ["william"], "mike": ["michael"], "jim": ["james"],
+    "jimmy": ["james"], "tom": ["thomas"], "tommy": ["thomas"], "dave": ["david"],
+    "steve": ["steven", "stephen"], "chris": ["christopher", "christian"],
+    "matt": ["matthew"], "joe": ["joseph"], "dan": ["daniel"], "danny": ["daniel"],
+    "rick": ["richard"], "rich": ["richard"], "dick": ["richard"], "tony": ["anthony"],
+    "jeff": ["jeffrey", "jeffery"], "greg": ["gregory"], "ken": ["kenneth"],
+    "andy": ["andrew"], "drew": ["andrew"], "ed": ["edward"], "eddie": ["edward"],
+    "tim": ["timothy"], "ben": ["benjamin"], "sam": ["samuel"], "pat": ["patrick", "patricia"],
+    "nick": ["nicholas"], "jon": ["jonathan"], "alex": ["alexander", "alexandra"],
+    "ron": ["ronald"], "don": ["donald"], "larry": ["lawrence"], "jerry": ["gerald", "jerome"],
+    "terry": ["terrence", "terence"], "charlie": ["charles"], "chuck": ["charles"],
+    "hank": ["henry"], "harry": ["harold", "henry"], "jack": ["john"], "johnny": ["john"],
+    "kate": ["katherine", "kathryn"], "katie": ["katherine", "kathryn"],
+    "kathy": ["katherine", "kathleen"], "liz": ["elizabeth"], "beth": ["elizabeth"],
+    "jen": ["jennifer"], "jenny": ["jennifer"], "sue": ["susan"], "debbie": ["deborah"],
+    "deb": ["deborah"], "becky": ["rebecca"], "cindy": ["cynthia"], "vicki": ["victoria"],
+    "zach": ["zachary"], "josh": ["joshua"], "ray": ["raymond"],
+    "randy": ["randall"], "fred": ["frederick"], "gene": ["eugene"], "walt": ["walter"],
+    "doug": ["douglas"], "phil": ["philip", "phillip"], "russ": ["russell"],
+    "stan": ["stanley"], "ted": ["theodore", "edward"], "vince": ["vincent"],
+}
+_FORMAL_TO_NICK: dict[str, list[str]] = {}
+for _nick, _formals in _NICKNAMES.items():
+    for _f in _formals:
+        _FORMAL_TO_NICK.setdefault(_f, []).append(_nick)
+
+
+def first_name_variants(first: str) -> list[str]:
+    """The given first name plus its formal/nickname equivalents (cleaned, lowercase)."""
+    f = clean_name(first)
+    if not f:
+        return []
+    out = [f]
+    for v in _NICKNAMES.get(f, []) + _FORMAL_TO_NICK.get(f, []):
+        if v not in out:
+            out.append(v)
+    return out
 
 
 def generate_candidates(
@@ -55,9 +102,19 @@ def generate_candidates(
             if preferred and preferred not in head:
                 head.append(preferred)
 
+    # Same known pattern applied to the formal/nickname first name ("Mike" -> michael.smith)
+    alt_head = []
+    for pat in (pattern, pattern2):
+        if not pat:
+            continue
+        for alt in first_name_variants(first)[1:2]:
+            cand = _apply_pattern(pat, alt, l, alt[0], li)
+            if cand and cand not in head and cand not in alt_head:
+                alt_head.append(cand)
+
     if head:
         tail = [v for v in variants if v not in head]
-        variants = head + tail
+        variants = head + alt_head + tail
 
     # Deduplicate preserving order, then append domain
     seen: set[str] = set()
@@ -89,10 +146,24 @@ def _apply_pattern(pattern: str, f: str, l: str, fi: str, li: str) -> str | None
     return mapping.get(pattern)
 
 
+def apply_pattern(pattern: str, f: str, l: str) -> str | None:
+    """Public wrapper: build a local part from already-cleaned first/last names."""
+    if not f or not l:
+        return None
+    return _apply_pattern(pattern, f, l, f[0], l[0])
+
+
+def clean_name(name: str) -> str:
+    return _clean(name)
+
+
 def _clean(name: str) -> str:
     """Normalize a name part for email construction."""
+    # Jose-with-accent -> jose (mail systems use ASCII; plain [a-z] stripping would give "jos")
+    name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
     name = name.strip().lower()
     name = name.split(",")[0].strip()
+    name = re.sub(r"\([^)]*\)", "", name)          # "John (Jack)" -> "John"
     # Remove credential suffixes
     name = re.sub(
         r"\b(phd|mba|pe|ms|bs|pg|cpg|jr|sr|ii|iii|iv)\b\.?", "", name, flags=re.IGNORECASE

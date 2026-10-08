@@ -48,14 +48,17 @@ Lead_Scout/
 │   ├── browser_checker.py           # Playwright browser verification (logged-in LinkedIn)
 │   └── worker.py                    # QThread wrapper for linkedin_checker
 ├── emailer/
-│   ├── domain_finder.py             # Discovers company email domain (HTTP validation + DDG)
-│   ├── pattern_detector.py          # Scrapes company website + HubSpot KB for email pattern
+│   ├── engine.py                    # SHARED enrichment engine (GUI worker + every CLI use it)
+│   ├── site_harvester.py            # Crawls company site: mailto/regex/Cloudflare/[at]/JSON-LD -> (email, name) pairs; pattern voting
+│   ├── csv_runner.py                # CSV front-end for the CLI scripts
+│   ├── domain_finder.py             # Discovers company email domain (HTTP validation + homepage-mentions-company check + DDG)
+│   ├── pattern_detector.py          # HubSpot KB -> site harvest -> emailformat.com -> search snippets
 │   ├── generator.py                 # Builds 8 email candidates from name + domain + pattern
 │   ├── smtp_verifier.py             # SMTP RCPT TO probe + MX lookup + catch-all detection
 │   ├── domain_cache.py              # Persists domain/pattern discoveries to JSON
 │   ├── bounce_tracker.py            # Persists hard-bounced addresses to JSON
 │   ├── hubspot_knowledge.json       # GITIGNORED — 941 domain→pattern mappings from CRM
-│   └── worker.py                    # QThread: runs full email enrichment pipeline
+│   └── worker.py                    # QThread wrapper around engine.Enricher (+ ApiVerifyWorker)
 ├── output/
 │   ├── csv_writer.py                # Writes contacts to all_contacts.csv + per-company CSV
 │   └── basin_mapper.py              # Maps LinkedIn location strings to O&G basin names
@@ -63,7 +66,6 @@ Lead_Scout/
 ├── _verify_batch.py                 # CLI: DDG-verify a CSV of contacts
 ├── _verify_linkedin_browser.py      # CLI: Browser-verify a CSV via Playwright (--login-only supported)
 ├── _generate_emails.py              # CLI: Generate emails without SMTP (pattern-based only)
-├── _enrich_batch.py                 # CLI: Full SMTP enrichment pipeline on a CSV
 ├── _import_bounces.py               # CLI: Import bounce CSV from ESP, update bounce tracker
 ├── _build_kb.py                     # CLI: Build hubspot_knowledge.json from HubSpot CSV export
 ├── _confirm_pattern.py              # CLI: Manually confirm a domain pattern, write to cache + KB
@@ -104,6 +106,15 @@ All data persists to `~/LeadScout_Output/`:
 
 ## Key Design Decisions
 
+### One-click flow
+Tab 1 has one big **Find Contacts & Emails** button: pulls contacts -> enriches emails -> saves
+`pipeline_<timestamp>.csv` -> "All done" box with counts and Open Folder. Everything else (pull only,
+verify employment, LinkedIn login, export) is under **More**. Tabs 2/3 remain for manual/advanced use.
+
+### SMTP rejections
+`email_verifier.classify_rcpt`: only 5.1.x / "user unknown" style replies mean a bad mailbox. A 5.7.x
+"blocked using Spamhaus" reply (typical for home IPs against Microsoft 365) is INCONCLUSIVE, never a bounce.
+
 ### GUI — Three Tabs
 1. **Lead Scout tab** — pull contacts by company, title filter (64 keywords, 3 groups), live search/filter, seniority scoring, completeness indicator, cross-session duplicate detection
 2. **Email Enricher tab** — enrich contacts with email addresses, 8-candidate preview panel with per-candidate bounce/status, right-click to override or remove from bounce list, MV/NeverBounce export+import, bounce importer
@@ -132,12 +143,25 @@ Based on analysis of 941 domains / 2,978 contacts from HubSpot CRM data:
 - GITIGNORED (contains real email addresses) — regenerate with `_build_kb.py` from your HubSpot CSV export
 - To build: `python _build_kb.py` (requires `Hubspot-Contacts.csv` in project root or Downloads)
 
-### Pattern Detection Order (`pattern_detector.py`)
-1. HubSpot KB (instant, 941 domains covered)
-2. emailformat.com scrape
-3. Company website scraping (14 paths)
-4. DDG search
-5. Returns `(pattern, source)` — source affects confidence and catch-all labeling
+### Pattern Detection Order (`pattern_detector.detect_pattern_ex`)
+1. HubSpot KB (instant, 941 domains). A stale cache entry that disagrees with the KB is demoted to `pattern2`.
+2. Website harvest (`site_harvester`): every published address with the nearby person name; a weighted vote
+   decides the format. name+email pair = proof (weight 3), dot-style hint without name = weak (1).
+3. emailformat.com
+4. Search snippets (all `@domain` hits, same voting)
+Harvest results (published addresses + names) are cached 14 days in `domain_cache.json`.
+
+### Enrichment Engine (`engine.Enricher`) — one code path
+1. Address published online for this exact person (nickname-aware: Mike = Michael) -> `found-on-site` (High)
+2. Else ranked candidates; bounced ones dropped up front
+3. Verify: SMTP if port 25 really answers (auto-disabled after 3 inconclusive probes) -> else NeverBounce/Reoon
+   (first verified hit LEARNS the company format, saving credits) -> else evidence-ranked, labelled honestly
+CLI scripts: `_generate_emails.py` (no verification) and `_pipeline.py` (full run, + `_viable.csv`).
+API keys for the CLIs come from `credentials.json`.
+
+### Tests
+`py -3 -m unittest discover tests` (offline, ~2s). `tests/e2e_run.py "Company"` and `tests/gui_smoke.py`
+exercise the real workers/GUI against the network using a scratch output dir (`LEADSCOUT_OUTPUT_DIR`).
 
 ### LinkedIn Scraping
 - Queries built as `"Title" "Company" site:linkedin.com/in` across DDG, Bing, Google
@@ -191,10 +215,12 @@ Based on analysis of 941 domains / 2,978 contacts from HubSpot CRM data:
 CSV columns: `name, title, company, location, basin, linkedin_url, emp_status, date_pulled, email, email_status, email_source`
 
 `email_status` values:
-- `pattern-confirmed` — pattern scraped from company website
+- `pattern-confirmed` — format proven by evidence (website/KB/emailformat), address not individually verified (Medium)
 - `pattern-ddg` — pattern found via DDG
 - `hubspot` — pattern from HubSpot KB
-- `best-guess` — no pattern found, used flast (most common)
+- `found-on-site` — this person's address is published on the web (High)
+- `pattern-ddg` — format found only via search snippets, unverified (Low)
+- `best-guess` — no evidence at all, used the most common O&G format (Low)
 - `verified` — SMTP confirmed
 - `catch-all-confirmed` / `catch-all-risky`
 - `bounced` — skipped (in bounce tracker)
