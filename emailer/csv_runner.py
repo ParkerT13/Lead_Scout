@@ -30,6 +30,12 @@ def load_api_keys() -> tuple[str, str]:
 
 def run(input_path: Path, output_path: Path, verify: bool) -> list[dict]:
     """verify=False: evidence-ranked emails only (no SMTP / API calls)."""
+    # Windows consoles are cp1252: a name like "Kim Dong-seung" in Korean must not crash the run
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:
+            pass
     with input_path.open(encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         fields = list(reader.fieldnames or [])
