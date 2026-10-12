@@ -40,7 +40,7 @@ from emailer.email_verifier import (check_catch_all, get_mx_records,
                                     verify_email as smtp_verify)
 from emailer.generator import clean_name, generate_candidates
 from emailer.pattern_detector import ddg_mail_domain, detect_pattern_ex, get_kb_entry, get_kb_pattern2
-from emailer.smtp_verifier import get_mx
+from emailer.smtp_verifier import get_mx, network_up
 
 logger = logging.getLogger(__name__)
 
@@ -190,11 +190,38 @@ class Enricher:
 
     # ── Company ──────────────────────────────────────────────────────────
 
+    def _wait_for_network(self, company: str, max_wait: float = 600.0) -> bool:
+        """Block (stop-aware) until the internet is reachable. False if it never came back."""
+        waited = 0.0
+        while not network_up():
+            if self._stop() or waited >= max_wait:
+                return False
+            self._say(company, "No internet connection - waiting to resume...")
+            time.sleep(15)
+            waited += 15
+        return True
+
+    @staticmethod
+    def _offline_rows(contacts: list[dict]) -> Iterator[dict]:
+        for c in contacts:
+            yield {**c, "email": "", "email_status": "error",
+                   "email_source": "no internet connection (use Retry Failed)", "confidence": ""}
+
     def enrich_company(self, company: str, contacts: list[dict]) -> Iterator[dict]:
         say = lambda m: self._say(company, m)
 
+        if not self._wait_for_network(company):
+            yield from self._offline_rows(contacts)
+            return
+
         say("Finding domain...")
         domain, seed = self._resolve_domain(company, say)
+        if (not domain or not get_mx(domain)) and not network_up():
+            # looked like "no such company / mail server", but we were actually offline
+            if not self._wait_for_network(company):
+                yield from self._offline_rows(contacts)
+                return
+            domain, seed = self._resolve_domain(company, say)
         if not domain:
             say("No domain found")
             for c in contacts:
@@ -259,7 +286,7 @@ class Enricher:
             findings = det.findings
             cache_put(company, domain, pattern, source, pattern2)
 
-        if rows is None:
+        if rows is None and findings:        # an empty crawl may just be an outage: don't cache it
             put_harvest(company, sh.findings_to_json(findings))
 
         if findings:

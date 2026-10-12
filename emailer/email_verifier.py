@@ -78,7 +78,10 @@ def get_mx_records(domain, timeout=DEFAULT_TIMEOUT):
     """
     domain = domain.lower()
     if domain not in _MX_CACHE:
-        _MX_CACHE[domain] = _lookup_mx(domain, timeout)
+        records = _lookup_mx(domain, timeout)
+        if records:                      # never cache an empty result: it may just be an outage
+            _MX_CACHE[domain] = records
+        return records
     return _MX_CACHE[domain]
 
 
