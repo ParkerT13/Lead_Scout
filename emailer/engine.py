@@ -105,6 +105,8 @@ class Enricher:
         should_stop: Callable[[], bool] | None = None,
         contact_delay: tuple[float, float] = (1.5, 3.0),
         probe_delay: float = 0.8,
+        person_search: bool = False,
+        person_search_cap: int = 15,
     ):
         self.nb_key = (nb_key or "").strip()
         self.reoon_key = (reoon_key or "").strip()
@@ -114,6 +116,9 @@ class Enricher:
         self._stop = should_stop or (lambda: False)
         self.contact_delay = contact_delay
         self.probe_delay = probe_delay
+        self.person_search = person_search          # search for each High-fit person's published address
+        self.person_search_cap = person_search_cap  # max such searches per company
+        self._person_searches: dict[str, int] = {}
         self._smtp_conclusive = 0
         self._smtp_inconclusive = 0
 
@@ -317,6 +322,12 @@ class Enricher:
             return {**base, "email": site_email, "email_status": "found-on-site",
                     "email_source": f"{domain} (published online)", "confidence": "High"}
 
+        hit = self._targeted_search(company, domain, contact, first, last)
+        if hit and not is_bounced(hit[0]):
+            self._detail(f"[{company}] {name} -> {hit[0]} [found by search]")
+            return {**base, "email": hit[0], "email_status": "found-on-site",
+                    "email_source": f"{domain} (published online: {hit[1][:60]})", "confidence": "High"}
+
         candidates = generate_candidates(first, last, domain, state["pattern"], state["pattern2"],
                                          avoid=learning.bad_patterns(domain))
         live = [c for c in candidates if not is_bounced(c)]
@@ -363,6 +374,25 @@ class Enricher:
         if self._smtp_conclusive == 0 and self._smtp_inconclusive >= 3 and self.port25_ok:
             self.port25_ok = False
             self._say(company, "SMTP probes inconclusive (port 25 filtered) - skipping SMTP")
+
+    def _targeted_search(self, company: str, domain: str, contact: dict, first: str, last: str):
+        """One person, one or two searches. Only for High-fit people, capped per company."""
+        if not self.person_search:
+            return None
+        used = self._person_searches.get(company, 0)
+        if used >= self.person_search_cap:
+            return None
+        from scraper.fit import classify
+        fit = contact.get("fit") or classify(contact.get("title", ""))["fit"]
+        if fit != "High":
+            return None
+        self._person_searches[company] = used + 1
+        from emailer.person_search import find_personal_email
+        try:
+            return find_personal_email(first, last, domain, company, stop=self._stop)
+        except Exception as e:
+            logger.debug("targeted search failed: %s", e)
+            return None
 
     def _verify_smtp(self, candidates: list[str]) -> tuple[str, str]:
         email, status = candidates[0], "unknown"

@@ -86,6 +86,9 @@ def main(argv=None) -> int:
     ap.add_argument("--no-sec", action="store_true")
     ap.add_argument("--no-web", action="store_true")
     ap.add_argument("--no-emails", action="store_true", help="contacts only")
+    ap.add_argument("--person-search", action="store_true",
+                    help="also search the web for each High-fit person's published address "
+                         "(slow: ~25s per person; rarely hits for executives; max 5 per company)")
     ap.add_argument("--paid-verify", action="store_true",
                     help="allow NeverBounce/Reoon (spends credits). Off by default.")
     ap.add_argument("--fresh", action="store_true", help="ignore the saved resume state")
@@ -128,6 +131,7 @@ def main(argv=None) -> int:
         from emailer.csv_runner import load_api_keys
         nb, reoon = load_api_keys() if args.paid_verify else ("", "")
         enricher = Enricher(nb_key=nb, reoon_key=reoon, port25_ok=False,
+                            person_search=args.person_search, person_search_cap=5,
                             say=lambda c, m: logging.info("[%s] %s", c, m),
                             detail=lambda m: logging.debug(m))
 
