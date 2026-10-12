@@ -23,6 +23,7 @@ from PySide6.QtGui import QColor, QFont, QDesktopServices, QShortcut, QKeySequen
 from scraper.worker import SearchWorker
 from emailer.worker import EmailWorker, ApiVerifyWorker
 from emailer.engine import DROP_STATUSES
+from scraper.fit import annotate as annotate_fit
 from emailer.generator import generate_candidates
 from emailer.domain_cache import all_entries as cache_all, get as cache_get, put as cache_put
 from emailer.smtp_verifier import port25_available
@@ -34,9 +35,9 @@ logger = logging.getLogger(__name__)
 
 # ── Column definitions ───────────────────────────────────────────────────────
 
-COLUMNS = ["First Name", "Last Name", "Title", "Company", "Location",
+COLUMNS = ["First Name", "Last Name", "Title", "Company", "Fit", "Discipline", "Location",
            "Basin", "LinkedIn URL", "Emp. Status", "Source", "Date", "Priority"]
-FIELDS  = ["first_name", "last_name", "title", "company", "location",
+FIELDS  = ["first_name", "last_name", "title", "company", "fit", "discipline", "location",
            "basin", "linkedin_url", "emp_status", "source", "date_pulled", "priority"]
 
 _EMAIL_COLS   = ["First Name", "Last Name", "Title", "Company",
@@ -514,11 +515,19 @@ class MainWindow(QMainWindow):
         self._search_company.currentTextChanged.connect(self._apply_table_filter)
         row.addWidget(self._search_company)
 
+        self._search_fit = QComboBox()
+        self._search_fit.setMaximumHeight(28)
+        self._search_fit.addItems(["Any fit", "Medium + High", "High only"])
+        self._search_fit.setToolTip("Everything is collected; this only hides lower-fit rows from view.")
+        self._search_fit.currentTextChanged.connect(self._apply_table_filter)
+        row.addWidget(self._search_fit)
+
         btn_clear = QPushButton("Clear")
         btn_clear.setMaximumHeight(28)
         btn_clear.setMaximumWidth(60)
         btn_clear.clicked.connect(lambda: (self._search_bar.clear(),
-                                           self._search_company.setCurrentIndex(0)))
+                                           self._search_company.setCurrentIndex(0),
+                                           self._search_fit.setCurrentIndex(0)))
         row.addWidget(btn_clear)
 
         self._completeness_label = QLabel("")
@@ -531,6 +540,7 @@ class MainWindow(QMainWindow):
         text    = self._search_bar.text().lower().strip()
         company = self._search_company.currentText()
         show_all_companies = (company == "All Companies")
+        fit_mode = self._search_fit.currentText() if hasattr(self, "_search_fit") else "Any fit"
 
         for row in range(self._table.rowCount()):
             match_text = True
@@ -544,7 +554,12 @@ class MainWindow(QMainWindow):
             if not show_all_companies:
                 co_item = self._table.item(row, FIELDS.index("company"))
                 match_co = co_item and co_item.text() == company
-            self._table.setRowHidden(row, not (match_text and match_co))
+            match_fit = True
+            if fit_mode != "Any fit":
+                fit_item = self._table.item(row, FIELDS.index("fit"))
+                fit = fit_item.text() if fit_item else ""
+                match_fit = fit == "High" if fit_mode == "High only" else fit in ("High", "Medium")
+            self._table.setRowHidden(row, not (match_text and match_co and match_fit))
 
     def _update_completeness_label(self):
         if not self._contacts:
@@ -1972,19 +1987,17 @@ class MainWindow(QMainWindow):
         if url:
             self._seen_urls.add(url)
 
-        # Title filter
+        # Collect wide, narrow later: nothing is discarded for its title (only the explicit exclude
+        # list below, e.g. interns). Fit / discipline are scored and can be filtered in the table.
         title = contact.get("title", "").lower()
-        inc_keywords = self._get_active_include_keywords()
-        if inc_keywords and not any(kw in title for kw in inc_keywords):
-            return
         exc = self._settings.get("title_exclude", "")
         if exc:
             exc_terms = [t.strip().lower() for t in exc.split(",") if t.strip()]
             if any(t in title for t in exc_terms):
                 return
 
-        # Auto-fill priority from title
-        contact["priority"] = _priority_label(contact.get("title", ""))
+        # Score fit / discipline / priority from the title
+        annotate_fit(contact)
 
         # Auto-fill basin if blank
         if not contact.get("basin"):
@@ -2359,9 +2372,9 @@ class MainWindow(QMainWindow):
         dropped = len(self._email_enriched) - len(viable)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_path = get_output_dir() / f"pipeline_{ts}.csv"
-        fields = ["first_name", "last_name", "title", "company", "email",
+        fields = ["first_name", "last_name", "title", "company", "fit", "discipline", "email",
                   "email_status", "confidence", "email_source", "location",
-                  "basin", "linkedin_url", "date_pulled"]
+                  "basin", "linkedin_url", "source", "date_pulled"]
         try:
             with open(out_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=fields)
@@ -2640,8 +2653,8 @@ class MainWindow(QMainWindow):
             if c.get("linkedin_url") and c["linkedin_url"] not in self._seen_urls:
                 if c.get("linkedin_url"):
                     self._seen_urls.add(c["linkedin_url"])
-                if not c.get("priority"):
-                    c["priority"] = _priority_label(c.get("title", ""))
+                if not c.get("fit"):
+                    annotate_fit(c)
                 self._contacts.append(c)
                 self._table.setSortingEnabled(False)
                 row = self._table.rowCount()

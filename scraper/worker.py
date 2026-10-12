@@ -148,6 +148,8 @@ class SearchWorker(QThread):
 
     def _emit(self, contact: dict) -> bool:
         """Emit a contact unless the same person (any source) was already found. True if new."""
+        from scraper.fit import annotate
+        annotate(contact)
         _, is_new = self._book.add(contact)
         if is_new:
             self.contact_found.emit(contact)

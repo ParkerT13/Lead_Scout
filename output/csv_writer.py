@@ -9,6 +9,8 @@ FIELDS = [
     "last_name",
     "title",
     "company",
+    "fit",
+    "discipline",
     "location",
     "basin",
     "linkedin_url",
@@ -19,6 +21,12 @@ FIELDS = [
     "email_status",
     "email_source",
 ]
+
+
+# The column order that was written underneath old-format headers (the cause of the shifted rows).
+# Frozen on purpose: it must never change when FIELDS gains columns, or repairs would misread rows.
+_SHIFTED_LAYOUT = ["first_name", "last_name", "title", "company", "location", "basin", "linkedin_url",
+                   "emp_status", "date_pulled", "email", "email_status", "email_source"]
 
 
 def get_output_dir() -> Path:
@@ -76,7 +84,7 @@ def migrate_file(path: Path) -> int:
         looks_shifted = len(row) > len(header) or str(old.get("source", "")).startswith("http")
         if looks_shifted:
             shifted += 1
-            new = dict(zip(FIELDS, row))              # written positionally under the old header
+            new = dict(zip(_SHIFTED_LAYOUT, row))     # written positionally under the old header
         else:
             first, last = _split_name(old.get("name", "")) if "name" in old else ("", "")
             new = {**{k: old.get(k, "") for k in FIELDS}}

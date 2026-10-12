@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-OUT_FIELDS = ["first_name", "last_name", "title", "company", "email", "email_status", "confidence",
+OUT_FIELDS = ["first_name", "last_name", "title", "company", "fit", "discipline", "email", "email_status", "confidence",
               "email_source", "location", "basin", "linkedin_url", "source", "date_pulled"]
 
 
