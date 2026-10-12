@@ -99,14 +99,31 @@ def generate_variants(company_name: str) -> list[str]:
     return unique[:3]
 
 
+# Roles beyond geoscience/engineering: a company's land, operations and finance staff are contacts too
+WIDE_TITLES = [
+    "landman", "land manager", "operations manager", "production supervisor", "field superintendent",
+    "completions manager", "drilling manager", "operations engineer", "regulatory", "geotechnician",
+    "data manager", "GIS", "petrophysical", "subsurface manager", "business development",
+    "vice president", "director", "controller", "analyst", "technician", "coordinator",
+]
+
+# Cities where O&G staff cluster: "<company> <city>" finds people whose headline names no role
+CITIES = ["Houston", "Midland", "Denver", "Dallas", "Fort Worth", "Oklahoma City", "Tulsa",
+          "San Antonio", "Austin", "Calgary", "Pittsburgh", "Lafayette", "Bakersfield"]
+
+
 def build_query_plan(company_name: str) -> list[list[str]]:
     """
-    Queries grouped per company-name variant, broad titles first then narrow ones.
-    The worker stops a group early when it stops producing new people.
+    Queries grouped per company-name variant: broad core titles first, then narrow titles, then
+    wider roles, then cities. The worker stops a group early when it stops producing new people.
     """
     titles: list[str] = []
-    for t in TARGET_TITLES + EXTRA_TITLES:
+    for t in TARGET_TITLES + EXTRA_TITLES + WIDE_TITLES:
         if t not in titles:
             titles.append(t)
-    return [[f'site:linkedin.com/in "{v}" "{t}"' for t in titles]
-            for v in generate_variants(company_name)]
+    plan = []
+    for v in generate_variants(company_name):
+        group = [f'site:linkedin.com/in "{v}" "{t}"' for t in titles]
+        group += [f'site:linkedin.com/in "{v}" {city}' for city in CITIES]
+        plan.append(group)
+    return plan

@@ -20,12 +20,14 @@ from emailer import csv_runner
 from emailer.engine import DROP_STATUSES
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python _pipeline.py <input.csv> [output.csv]")
+    paid = "--paid-verify" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--paid-verify"]
+    if not args:
+        print("Usage: python _pipeline.py <input.csv> [output.csv] [--paid-verify]")
         sys.exit(1)
-    src = Path(sys.argv[1])
-    dst = Path(sys.argv[2]) if len(sys.argv) > 2 else src.parent / (src.stem + "_pipeline.csv")
-    results = csv_runner.run(src, dst, verify=True)
+    src = Path(args[0])
+    dst = Path(args[1]) if len(args) > 1 else src.parent / (src.stem + "_pipeline.csv")
+    results = csv_runner.run(src, dst, verify=True, paid=paid)
 
     viable = [r for r in results if r.get("email") and r.get("email_status") not in DROP_STATUSES]
     vpath = dst.parent / (dst.stem + "_viable.csv")

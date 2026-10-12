@@ -141,6 +141,8 @@ _DEFAULT_SETTINGS = {
     "title_exclude":        "intern, student, professor",
     "nb_api_key":       "",       # NeverBounce API key (used first while credits remain)
     "reoon_api_key":    "",       # Reoon API key (automatic fallback when NeverBounce credits gone)
+    "use_paid_verification": False,   # NeverBounce/Reoon spend credits: strictly opt-in
+    "discovery_sources": {"linkedin": True, "team": True, "sec": True, "web": True},
 }
 
 # Comprehensive O&G title keyword groups — each keyword does substring matching
@@ -1258,6 +1260,8 @@ class MainWindow(QMainWindow):
                     continue
                 seen_emails.add(email)
 
+            if c.get("linkedin_url") and "linkedin.com/in/" not in c["linkedin_url"]:
+                c = {**c, "linkedin_url": ""}        # a team-page / filing reference is not a LinkedIn profile
             result.append(c)
         return result
 
@@ -1585,6 +1589,10 @@ class MainWindow(QMainWindow):
 
     # ── Settings dialog ──────────────────────────────────────────────────────
 
+    def _paid_key(self, name: str) -> str:
+        """API keys are handed to the enrichment engine only when paid verification is switched on."""
+        return self._settings.get(name, "") if self._settings.get("use_paid_verification", False) else ""
+
     def _show_settings_dialog(self):
         dlg = QDialog(self)
         dlg.setWindowTitle("Settings")
@@ -1659,12 +1667,32 @@ class MainWindow(QMainWindow):
         reoon_row.addWidget(reoon_show)
         layout.addRow("Reoon Key (fallback):", reoon_row)
 
+        paid_cb = QCheckBox("Use paid verification (spends NeverBounce/Reoon credits)")
+        paid_cb.setChecked(bool(self._settings.get("use_paid_verification", False)))
+        paid_cb.setToolTip("OFF = everything is free: emails are found and ranked from public evidence, "
+                           "and nothing is ever billed. The keys above are only used when this is ON.")
+        layout.addRow("Paid verification:", paid_cb)
+
+        src_box = QHBoxLayout()
+        src_checks = {}
+        cur_src = {**{"linkedin": True, "team": True, "sec": True, "web": True},
+                   **self._settings.get("discovery_sources", {})}
+        for key, label in (("linkedin", "LinkedIn search"), ("team", "Company team pages"),
+                           ("sec", "SEC filings"), ("web", "Web mentions")):
+            cb = QCheckBox(label)
+            cb.setChecked(bool(cur_src.get(key, True)))
+            src_checks[key] = cb
+            src_box.addWidget(cb)
+        layout.addRow("Find contacts from:", src_box)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
         layout.addRow(buttons)
 
         if dlg.exec() == QDialog.Accepted:
+            self._settings["use_paid_verification"] = paid_cb.isChecked()
+            self._settings["discovery_sources"] = {k: cb.isChecked() for k, cb in src_checks.items()}
             self._settings["output_dir"]     = out_edit.text().strip()
             self._settings["search_delay"]   = delay_spin.value()
             self._settings["default_format"] = fmt_combo.currentText()
@@ -1855,7 +1883,7 @@ class MainWindow(QMainWindow):
         self._progress.setVisible(True)
         self._progress.setRange(0, 0)
 
-        self._worker = SearchWorker(pending, get_output_dir())
+        self._worker = SearchWorker(pending, get_output_dir(), sources=self._settings.get("discovery_sources"))
         self._worker.contact_found.connect(self._on_contact)
         self._worker.company_started.connect(self._on_started)
         self._worker.company_progress.connect(self._on_progress)
@@ -2176,8 +2204,8 @@ class MainWindow(QMainWindow):
 
         self._email_worker = EmailWorker(
             to_enrich,
-            nb_api_key=self._settings.get("nb_api_key", ""),
-            reoon_api_key=self._settings.get("reoon_api_key", ""),
+            nb_api_key=self._paid_key("nb_api_key"),
+            reoon_api_key=self._paid_key("reoon_api_key"),
         )
         self._email_worker.contact_enriched.connect(self._on_email_enriched)
         self._email_worker.company_started.connect(self._on_email_company_started)
@@ -2278,8 +2306,8 @@ class MainWindow(QMainWindow):
     @Slot()
     def _on_port25_blocked(self):
         self._port25_ok = False
-        has_nb    = bool(self._settings.get("nb_api_key", "").strip())
-        has_reoon = bool(self._settings.get("reoon_api_key", "").strip())
+        has_nb    = bool(self._paid_key("nb_api_key").strip())
+        has_reoon = bool(self._paid_key("reoon_api_key").strip())
         if has_nb or has_reoon:
             verifier = "NeverBounce" + (" → Reoon fallback" if has_reoon else "")
             self._port25_banner.setText(

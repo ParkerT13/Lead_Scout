@@ -9,6 +9,7 @@ from PySide6.QtCore import QThread, Signal
 from scraper.query_builder import build_query_plan, generate_variants
 from scraper.parser import parse_result, is_valid_contact
 from scraper.engines import duckduckgo, bing, google
+from scraper.people import ContactBook
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +20,9 @@ _QUERY_DELAY = (3.5, 7.5)
 # Seconds between companies
 _COMPANY_DELAY = (15, 25)
 # Stop a company-name variant after this many queries in a row add nobody new
-_DRY_STREAK_STOP = 8
+_DRY_STREAK_STOP = 12
 # Search the 2nd/3rd name variant only if the first one found fewer than this many people
-_MIN_FOR_SKIP_VARIANTS = 6
+_MIN_FOR_SKIP_VARIANTS = 30
 # Seconds between engine fallback attempts within a single query
 _FALLBACK_DELAY = (3, 6)
 
@@ -39,11 +40,15 @@ class SearchWorker(QThread):
     status_update    = Signal(str)
     all_done         = Signal()
 
-    def __init__(self, companies: list[str], output_dir: Path):
+    DEFAULT_SOURCES = {"linkedin": True, "team": True, "sec": True, "web": True}
+
+    def __init__(self, companies: list[str], output_dir: Path, sources: dict | None = None):
         super().__init__()
         self._companies  = companies
         self._output_dir = output_dir
         self._stop       = False
+        self._sources    = {**self.DEFAULT_SOURCES, **(sources or {})}
+        self._book       = ContactBook()
 
     # ── Main loop ────────────────────────────────────────────────────────
 
@@ -75,7 +80,8 @@ class SearchWorker(QThread):
     # ── Per-company processing ───────────────────────────────────────────
 
     def _process_company(self, company: str) -> int:
-        plan         = build_query_plan(company)
+        self._book   = ContactBook()          # people already found for this company, any source
+        plan         = build_query_plan(company) if self._sources["linkedin"] else []
         queries_total = sum(len(g) for g in plan)
         seen_urls: set[str] = set()
         total        = 0
@@ -120,8 +126,7 @@ class SearchWorker(QThread):
                 new_here = 0
                 for r in results:
                     contact = self._accept(r, company, variant_lowers, first_words, seen_urls)
-                    if contact:
-                        self.contact_found.emit(contact)
+                    if contact and self._emit(contact):
                         total += 1
                         new_here += 1
 
@@ -131,11 +136,50 @@ class SearchWorker(QThread):
                 time.sleep(random.uniform(*_QUERY_DELAY))
 
         # If title-specific queries found nothing, try a broad company search
-        if total == 0 and not self._stop:
+        if total == 0 and not self._stop and self._sources["linkedin"]:
             self.status_update.emit(f"[{company}]  No title matches — running broad fallback search...")
             total += self._broad_fallback(company, seen_urls)
 
+        # Everything that is not a LinkedIn profile: the company's own pages, SEC filings, web mentions
+        if not self._stop:
+            total += self._extra_sources(company)
+
         return total
+
+    def _emit(self, contact: dict) -> bool:
+        """Emit a contact unless the same person (any source) was already found. True if new."""
+        _, is_new = self._book.add(contact)
+        if is_new:
+            self.contact_found.emit(contact)
+        return is_new
+
+    def _extra_sources(self, company: str) -> int:
+        """Team pages -> SEC filings -> web mentions. Each is best-effort and never aborts a run."""
+        from scraper.sources import teampages, sec, web
+        found = 0
+
+        def run(label: str, fn):
+            nonlocal found
+            if self._stop:
+                return
+            self.status_update.emit(f"[{company}]  Searching {label}...")
+            try:
+                new = sum(1 for c in fn() if self._emit(c))
+            except Exception as e:
+                logger.warning("%s source failed for %s: %s", label, company, e)
+                return
+            found += new
+            self.status_update.emit(f"[{company}]  {label}: {new} new contact(s)")
+
+        if self._sources["team"]:
+            from emailer.domain_finder import find_domain
+            domain = find_domain(company)
+            run("company team pages", lambda: teampages.discover(company, domain))
+        if self._sources["sec"]:
+            run("SEC filings", lambda: sec.discover(company))
+        if self._sources["web"]:
+            run("web mentions", lambda: web.discover(company, stop=lambda: self._stop))
+        return found
 
     def _accept(self, r: dict, company: str, variant_lowers: set, first_words: set,
                 seen_urls: set) -> dict | None:
@@ -240,8 +284,7 @@ class SearchWorker(QThread):
                 if title_lower and not title_is_company and not has_keyword:
                     continue
 
-                if is_valid_contact(contact, company):
-                    self.contact_found.emit(contact)
+                if is_valid_contact(contact, company) and self._emit(contact):
                     count += 1
 
             time.sleep(random.uniform(*_QUERY_DELAY))

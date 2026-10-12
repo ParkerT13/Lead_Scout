@@ -28,8 +28,9 @@ def load_api_keys() -> tuple[str, str]:
     return "", ""
 
 
-def run(input_path: Path, output_path: Path, verify: bool) -> list[dict]:
-    """verify=False: evidence-ranked emails only (no SMTP / API calls)."""
+def run(input_path: Path, output_path: Path, verify: bool, paid: bool = False) -> list[dict]:
+    """verify=False: evidence-ranked emails only. verify=True adds free SMTP checks where possible.
+    paid=True additionally allows NeverBounce/Reoon, which spend credits - never the default."""
     # Windows consoles are cp1252: a name like "Kim Dong-seung" in Korean must not crash the run
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -47,7 +48,7 @@ def run(input_path: Path, output_path: Path, verify: bool) -> list[dict]:
     port25_ok, nb, reoon = False, "", ""
     if verify:
         port25_ok = port25_available()
-        nb, reoon = load_api_keys()
+        nb, reoon = load_api_keys() if paid else ("", "")
         reset_session()
         if not port25_ok and not (nb or reoon):
             print("NOTE: port 25 blocked and no API keys - emails will be evidence-ranked, not verified.\n")
@@ -101,9 +102,11 @@ def _write(path: Path, fields: list[str], rows: list[dict]):
 
 
 def main(verify: bool, usage: str):
-    if len(sys.argv) < 2:
-        print(usage)
+    paid = "--paid-verify" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--paid-verify"]
+    if not args:
+        print(usage + "   [--paid-verify]  (NeverBounce/Reoon checks spend credits; off by default)")
         sys.exit(1)
-    src = Path(sys.argv[1])
-    dst = Path(sys.argv[2]) if len(sys.argv) > 2 else src.parent / (src.stem + "_enriched.csv")
-    run(src, dst, verify)
+    src = Path(args[0])
+    dst = Path(args[1]) if len(args) > 1 else src.parent / (src.stem + "_enriched.csv")
+    return run(src, dst, verify, paid)

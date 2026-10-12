@@ -17,7 +17,7 @@ except ImportError:
     logger.warning("ddgs not installed. DDG engine disabled.")
 
 
-def search(query: str, max_results: int = 10) -> list[dict]:
+def search(query: str, max_results: int = 20) -> list[dict]:
     """
     Search DuckDuckGo via the ddgs library.
     Returns list of {title, href, body}. Empty list on failure.
