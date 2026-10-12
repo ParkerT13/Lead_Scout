@@ -2880,6 +2880,24 @@ class MainWindow(QMainWindow):
             msg = f"Recorded {len(emails)} bounced addresses."
             if campaign:
                 msg += f"  Campaign: {campaign}"
+
+            # Learn which email FORMATS failed (and, with the sent list, which worked)
+            from emailer import learning
+            sent_path = None
+            ask = QMessageBox.question(
+                self, "Learn which formats work?",
+                "Optional: pick the full list you SENT to as well.\n\n"
+                "With it, Lead Scout learns which email formats were delivered and which bounced "
+                "at each company, and corrects its guesses next time.",
+                QMessageBox.Yes | QMessageBox.No)
+            if ask == QMessageBox.Yes:
+                sp, _ = QFileDialog.getOpenFileName(self, "Sent list", str(get_output_dir()),
+                                                    "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)")
+                sent_path = Path(sp) if sp else None
+            summary = learning.learn_from_files(Path(path), sent_path)
+            msg += f"\nMatched {summary['bounced_known']} bounce(s) to a known email format."
+            for note in summary["changes"]:
+                msg += f"\nFormat corrected: {note}"
             self.statusBar().showMessage(msg)
             QMessageBox.information(self, "Bounces Imported", msg)
         except Exception as e:

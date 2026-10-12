@@ -88,7 +88,19 @@ def update_enriched_csvs(bounced_set: set[str]):
     return updated
 
 
-def check_pattern_health():
+def check_pattern_health()
+
+from emailer import learning
+print("\nLearning from the results...")
+summary = learning.learn_from_files(input_path, sent_path)
+print(f"  {summary['bounced_known']} bounced address(es) matched to a known person/format, "
+      f"{summary['bounced_unknown']} could not be matched")
+if sent_path:
+    print(f"  {summary['delivered_known']} delivered address(es) confirmed formats")
+for note in summary["changes"]:
+    print(f"  FORMAT CORRECTED: {note}")
+if not summary["changes"]:
+    print("  No company format needed correcting yet (needs 2+ results per format)."):
     """Report any domains where bounce rate suggests the pattern is wrong."""
     bounces = all_bounces()
     domains: dict[str, int] = {}
@@ -109,8 +121,15 @@ def check_pattern_health():
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+sent_path = None
+if "--sent" in sys.argv:
+    i = sys.argv.index("--sent")
+    sent_path = Path(sys.argv[i + 1])
+    del sys.argv[i:i + 2]
+
 if len(sys.argv) < 2:
-    print("Usage: python _import_bounces.py <bounce_file.csv|.txt> [campaign_name]")
+    print("Usage: python _import_bounces.py <bounce_file.csv|.txt> [campaign_name] [--sent sent_list.csv]")
+    print("  --sent lets Lead Scout also learn which email formats WORKED (delivered = sent - bounced)")
     sys.exit(1)
 
 input_path = Path(sys.argv[1])

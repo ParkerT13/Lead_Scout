@@ -30,7 +30,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Callable, Iterator
 
-from emailer import site_harvester as sh
+from emailer import learning, site_harvester as sh
 from emailer.api_verifier import verify_via_api
 from emailer.bounce_tracker import is_bounced
 from emailer.domain_cache import (get as cache_get, put as cache_put,
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 # Pattern sources that are backed by evidence rather than a guess
 # "ddg" = strong name+email evidence from search snippets (4/4 correct in testing); weak hints are dropped
 RELIABLE_SOURCES = {"hubspot", "scraped", "emailformat", "ddg", "smtp-verified",
-                    "api-verified", "manual"}
+                    "api-verified", "outcome-verified", "manual"}
 
 # Statuses meaning the address is undeliverable / unusable
 DROP_STATUSES = {"bounced", "no domain", "no MX", "no candidates", "error",
@@ -268,7 +268,8 @@ class Enricher:
             # A cache entry written by a weaker detector must not outrank real CRM
             # data; keep both formats so each gets tried (split-format companies).
             kb = get_kb_entry(domain)
-            if kb and kb.get("pattern") and kb["pattern"] != pattern and source != "manual":
+            if kb and kb.get("pattern") and kb["pattern"] != pattern and source not in (
+                    "manual", "outcome-verified", "outcome-guess"):
                 if source != "hubspot":
                     pattern2 = pattern2 if pattern2 not in (None, kb["pattern"]) else pattern
                 pattern, source = kb["pattern"], "hubspot"
@@ -316,7 +317,8 @@ class Enricher:
             return {**base, "email": site_email, "email_status": "found-on-site",
                     "email_source": f"{domain} (published online)", "confidence": "High"}
 
-        candidates = generate_candidates(first, last, domain, state["pattern"], state["pattern2"])
+        candidates = generate_candidates(first, last, domain, state["pattern"], state["pattern2"],
+                                         avoid=learning.bad_patterns(domain))
         live = [c for c in candidates if not is_bounced(c)]
         if not candidates:
             return {**base, "email": "", "email_status": "no candidates",

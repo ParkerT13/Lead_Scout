@@ -67,6 +67,7 @@ def generate_candidates(
     domain: str,
     pattern: str | None = None,
     pattern2: str | None = None,
+    avoid: set[str] | None = None,
 ) -> list[str]:
     """
     Return a list of candidate email addresses, most likely first.
@@ -115,6 +116,11 @@ def generate_candidates(
     if head:
         tail = [v for v in variants if v not in head]
         variants = head + alt_head + tail
+
+    # Formats that real sends proved wrong at this domain go to the back (kept as a last resort)
+    if avoid:
+        demoted = {_apply_pattern(p, f, l, fi, li) for p in avoid}
+        variants = [v for v in variants if v not in demoted] + [v for v in variants if v in demoted]
 
     # Deduplicate preserving order, then append domain
     seen: set[str] = set()
