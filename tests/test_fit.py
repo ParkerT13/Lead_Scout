@@ -33,6 +33,13 @@ class FitTests(unittest.TestCase):
         self.assertEqual((c["discipline"], c["fit"], c["priority"]), ("Geoscience", "High", "2 - VP"))
         self.assertEqual(c["name"], "A B")
 
+    def test_former_and_retired_are_never_high_fit(self):
+        for t in ("Retired Principal Engineer", "Former Senior Geologist", "Geophysicist (open to work)",
+                  "Past VP Exploration"):
+            self.assertEqual(classify(t)["fit"], "Low", t)
+            self.assertTrue(classify(t)["former"])
+        self.assertFalse(classify("Senior Geologist")["former"])
+
     def test_geoscience_beats_engineering_keywords(self):
         self.assertEqual(classify("Geoscience Engineer")["discipline"], "Geoscience")
         self.assertEqual(classify("Drilling Engineer")["discipline"], "Reservoir/Completions Eng")

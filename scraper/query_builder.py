@@ -127,3 +127,18 @@ def build_query_plan(company_name: str) -> list[list[str]]:
         group += [f'site:linkedin.com/in "{v}" {city}' for city in CITIES]
         plan.append(group)
     return plan
+
+
+def build_query_plan_kinds(company_name: str) -> list[list[tuple[str, str]]]:
+    """Like build_query_plan, but every query carries its kind: core | narrow | wide | city."""
+    core = list(dict.fromkeys(TARGET_TITLES))
+    narrow = [t for t in dict.fromkeys(EXTRA_TITLES) if t not in core]
+    wide = [t for t in dict.fromkeys(WIDE_TITLES) if t not in core and t not in narrow]
+    plan = []
+    for v in generate_variants(company_name):
+        group = [("core", f'site:linkedin.com/in "{v}" "{t}"') for t in core]
+        group += [("narrow", f'site:linkedin.com/in "{v}" "{t}"') for t in narrow]
+        group += [("wide", f'site:linkedin.com/in "{v}" "{t}"') for t in wide]
+        group += [("city", f'site:linkedin.com/in "{v}" {city}') for city in CITIES]
+        plan.append(group)
+    return plan

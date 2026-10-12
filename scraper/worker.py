@@ -6,25 +6,21 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
-from scraper.query_builder import build_query_plan, generate_variants
+from scraper.query_builder import build_query_plan_kinds, generate_variants
 from scraper.parser import parse_result, is_valid_contact
 from scraper.engines import duckduckgo, bing, google
 from scraper.people import ContactBook
+from scraper import searchcore
+from scraper.query_stats import QueryStats
 
 logger = logging.getLogger(__name__)
 
-# After this many consecutive zero-result queries, switch preferred engine
-_DDG_ZERO_THRESHOLD = 3
-# Seconds between individual queries
-_QUERY_DELAY = (3.5, 7.5)
-# Seconds between companies
-_COMPANY_DELAY = (15, 25)
-# Stop a company-name variant after this many queries in a row add nobody new
-_DRY_STREAK_STOP = 12
+# Seconds between companies (request pacing itself is handled by searchcore's global limiter)
+_COMPANY_DELAY = (2, 4)
+# Per query kind: stop that kind after this many queries in a row add nobody new
+_DRY_STREAK = {"core": 12, "narrow": 8, "wide": 6, "city": 4}
 # Search the 2nd/3rd name variant only if the first one found fewer than this many people
 _MIN_FOR_SKIP_VARIANTS = 30
-# Seconds between engine fallback attempts within a single query
-_FALLBACK_DELAY = (3, 6)
 
 
 class SearchWorker(QThread):
@@ -42,8 +38,10 @@ class SearchWorker(QThread):
 
     DEFAULT_SOURCES = {"linkedin": True, "team": True, "sec": True, "web": True}
 
-    def __init__(self, companies: list[str], output_dir: Path, sources: dict | None = None):
+    def __init__(self, companies: list[str], output_dir: Path, sources: dict | None = None,
+                 thorough: bool = False):
         super().__init__()
+        self._thorough   = thorough          # True: never prune query kinds or stop on dry streaks
         self._companies  = companies
         self._output_dir = output_dir
         self._stop       = False
@@ -81,12 +79,11 @@ class SearchWorker(QThread):
 
     def _process_company(self, company: str) -> int:
         self._book   = ContactBook()          # people already found for this company, any source
-        plan         = build_query_plan(company) if self._sources["linkedin"] else []
+        plan         = build_query_plan_kinds(company) if self._sources["linkedin"] else []
         queries_total = sum(len(g) for g in plan)
         seen_urls: set[str] = set()
         total        = 0
-        ddg_zeros    = 0
-        prefer_bing  = False  # DDG (via Yahoo fallback) is primary; Bing is currently CAPTCHA-blocked
+        stats        = QueryStats()
 
         variant_lowers = {v.lower() for v in generate_variants(company)}
         # First significant word of each variant (>=4 chars) for truncation-tolerant
@@ -94,35 +91,29 @@ class SearchWorker(QThread):
         first_words = {v.split()[0] for v in variant_lowers if len(v.split()[0]) >= 4}
 
         done_q = 0
-        for gi, queries in enumerate(plan):
+        for gi, group in enumerate(plan):
             if self._stop:
                 break
             if gi > 0 and total >= _MIN_FOR_SKIP_VARIANTS:
-                done_q += len(queries)
+                done_q += len(group)
                 continue                     # first variant already found plenty
-            dry = 0
-            for query in queries:
+            current_kind, dry, skipping = None, 0, False
+            for kind, query in group:
                 if self._stop:
                     break
                 done_q += 1
+                if kind != current_kind:
+                    current_kind, dry = kind, 0
+                    skipping = (not self._thorough) and stats.should_skip(kind)
+                    if skipping:
+                        logger.info("[%s] skipping '%s' queries (historically almost never add people)", company, kind)
+                if skipping:
+                    continue
+
                 self.company_progress.emit(company, done_q, queries_total)
-                engine_label = "Bing" if prefer_bing else "DDG"
-                self.status_update.emit(
-                    f"[{company}]  Query {done_q}/{queries_total}  |  Engine: {engine_label}  |  Found: {total}"
-                )
+                self.status_update.emit(f"[{company}]  Query {done_q}/{queries_total}  |  Found: {total}")
 
-                results = self._search(query, prefer_bing)
-
-                if not results:
-                    ddg_zeros += 1
-                    if not prefer_bing and ddg_zeros >= _DDG_ZERO_THRESHOLD:
-                        prefer_bing = True
-                        self.status_update.emit(
-                            f"[{company}]  DDG dry for {_DDG_ZERO_THRESHOLD} queries - switching to Bing."
-                        )
-                else:
-                    ddg_zeros = 0
-
+                results = self._search(query)
                 new_here = 0
                 for r in results:
                     contact = self._accept(r, company, variant_lowers, first_words, seen_urls)
@@ -130,10 +121,12 @@ class SearchWorker(QThread):
                         total += 1
                         new_here += 1
 
+                stats.record(kind, new_here)
                 dry = 0 if new_here else dry + 1
-                if total and dry >= _DRY_STREAK_STOP:
-                    break                    # this variant is exhausted
-                time.sleep(random.uniform(*_QUERY_DELAY))
+                if not self._thorough and total and dry >= _DRY_STREAK.get(kind, 8):
+                    skipping = True          # this kind is exhausted for this company
+
+        stats.save()
 
         # If title-specific queries found nothing, try a broad company search
         if total == 0 and not self._stop and self._sources["linkedin"]:
@@ -250,7 +243,7 @@ class SearchWorker(QThread):
                 break
             query = f'site:linkedin.com/in "{variant}"'
             self.status_update.emit(f"[{company}]  Broad: {query}")
-            results = self._search(query, False)
+            results = self._search(query)
 
             for r in results:
                 href = r.get("href", "")
@@ -289,37 +282,17 @@ class SearchWorker(QThread):
                 if is_valid_contact(contact, company) and self._emit(contact):
                     count += 1
 
-            time.sleep(random.uniform(*_QUERY_DELAY))
-
         return count
 
     # ── Engine dispatch ──────────────────────────────────────────────────
 
-    def _search(self, query: str, prefer_bing: bool) -> list[dict]:
-        """
-        Try engines in order. Tags each result with its source engine.
-        Falls back through all three engines before giving up on a query.
-        """
-        order = (
-            [("Bing", bing.search), ("DDG", duckduckgo.search), ("Google", google.search)]
-            if prefer_bing
-            else [("DDG", duckduckgo.search), ("Bing", bing.search), ("Google", google.search)]
+    def _search(self, query: str) -> list[dict]:
+        """One query through the shared search layer: cache, global rate limit, engine breakers."""
+        return searchcore.search(
+            query,
+            [("DDG", duckduckgo.search), ("Bing", bing.search), ("Google", google.search)],
+            stop=lambda: self._stop,
         )
-
-        for engine_name, search_fn in order:
-            if self._stop:
-                return []
-            try:
-                results = search_fn(query)
-                if results:
-                    for r in results:
-                        r["_engine"] = engine_name
-                    return results
-            except Exception as e:
-                logger.warning(f"{engine_name} raised: {e}")
-            time.sleep(random.uniform(*_FALLBACK_DELAY))
-
-        return []
 
     # ── Failure logging ──────────────────────────────────────────────────
 

@@ -38,7 +38,10 @@ class SecTests(unittest.TestCase):
     def test_discover_end_to_end_with_mocked_http(self):
         sec._tickers_cache = {sec._norm("Ring Energy Inc"): 1384195}
         subs = mock.Mock(status_code=200)
+        import datetime as dt
+        recent_day = (dt.date.today() - dt.timedelta(days=30)).isoformat()
         subs.json.return_value = {"filings": {"recent": {"form": ["8-K", "4"], "accessionNumber": ["0001-24-1", "0001-24-2"],
+                                                         "filingDate": [recent_day, recent_day],
                                                          "primaryDocument": ["a.htm", "xslF345X05/wk-form4.xml"]}}}
         xml = mock.Mock(status_code=200, text=FORM4)
         calls = []

@@ -80,13 +80,13 @@ def setup_logging(log_path: Path):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-def discover_contacts(company: str, sources: dict) -> list[dict]:
+def discover_contacts(company: str, sources: dict, thorough: bool = False) -> list[dict]:
     """All contacts for one company from every enabled free source (same code as the GUI)."""
     from PySide6.QtCore import QCoreApplication
     from scraper.worker import SearchWorker
     QCoreApplication.instance() or QCoreApplication([])
     found: list[dict] = []
-    worker = SearchWorker([company], Path("."), sources=sources)
+    worker = SearchWorker([company], Path("."), sources=sources, thorough=thorough)
     worker.contact_found.connect(found.append)
     worker.status_update.connect(lambda m: logging.info(m))
     worker._process_company(company)           # synchronous: no thread needed in autopilot
@@ -111,6 +111,12 @@ def main(argv=None) -> int:
                                   "found automatically in ~/LeadScout_Output/crm_contacts.csv or Downloads")
     ap.add_argument("--exclude-crm", action="store_true", help="leave people already in your CRM out of the results")
     ap.add_argument("--fresh", action="store_true", help="ignore the saved resume state")
+    ap.add_argument("--workers", type=int, default=3,
+                    help="companies processed at the same time (all searches share one rate limiter)")
+    ap.add_argument("--rate", type=float, default=3.5,
+                    help="minimum seconds between search requests, across all workers (default 3.5)")
+    ap.add_argument("--thorough", action="store_true",
+                    help="run every LinkedIn query for every company (slower; default prunes dry query types)")
     ap.add_argument("--max-companies", type=int, default=0)
     args = ap.parse_args(argv)
 
@@ -144,15 +150,20 @@ def main(argv=None) -> int:
                  len(companies), len(done), [k for k, v in sources.items() if v],
                  not args.no_emails, args.paid_verify)
 
-    enricher = None
+    make_enricher = None
     if not args.no_emails:
         from emailer.engine import Enricher
         from emailer.csv_runner import load_api_keys
         nb, reoon = load_api_keys() if args.paid_verify else ("", "")
-        enricher = Enricher(nb_key=nb, reoon_key=reoon, port25_ok=False,
+
+        def make_enricher():
+            return Enricher(nb_key=nb, reoon_key=reoon, port25_ok=False,
                             person_search=args.person_search, person_search_cap=5,
                             say=lambda c, m: logging.info("[%s] %s", c, m),
                             detail=lambda m: logging.debug(m))
+
+    from scraper import searchcore
+    searchcore.configure(min_interval=args.rate)
 
     from emailer import crm_overlap
     from scraper.people import person_key
@@ -172,56 +183,67 @@ def main(argv=None) -> int:
     write_header = not result_path.exists()
     total_contacts = total_emails = 0
     t0 = time.time()
-    for i, company in enumerate(companies, 1):
-        if company.lower() in done:
-            continue
-        logging.info("=== (%d/%d) %s ===", i, len(companies), company)
-        try:
-            from emailer.smtp_verifier import network_up
-            waited = 0
-            while not network_up() and waited < 3600:          # wait out outages, up to an hour
-                logging.info("No internet - waiting...")
-                time.sleep(30)
-                waited += 30
-            contacts = discover_contacts(company, sources)
-            rows = list(enricher.enrich_company(company, contacts)) if (enricher and contacts) else contacts
-        except Exception:
-            logging.exception("Company failed (will be retried on the next run): %s", company)
-            continue
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from emailer.smtp_verifier import network_up
 
-        if crm:
-            crm.mark(rows)
-            if args.exclude_crm:
-                rows = [r for r in rows if not r.get("in_crm")]
-        for r in rows:
-            key = person_key(r)
-            if key and key not in seen_now:
-                seen_now[key] = today
-                if seen_before is not None:
-                    new_rows.append(r)
-        for r in rows:
-            key = person_key(r)
-            if key and key in in_master:
-                continue                       # already in the master list
+    def work(i: int, company: str) -> list[dict]:
+        """Everything for one company; runs in a worker thread."""
+        logging.info("=== (%d/%d) %s ===", i, len(companies), company)
+        waited = 0
+        while not network_up() and waited < 3600:              # wait out outages, up to an hour
+            logging.info("No internet - waiting...")
+            time.sleep(30)
+            waited += 30
+        contacts = discover_contacts(company, sources, thorough=args.thorough)
+        if make_enricher and contacts:
+            return list(make_enricher().enrich_company(company, contacts))
+        return contacts
+
+    pending = [(i, c) for i, c in enumerate(companies, 1) if c.lower() not in done]
+    workers = max(1, args.workers)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="co") as pool:
+        futures = {pool.submit(work, i, c): c for i, c in pending}
+        for fut in as_completed(futures):
+            company = futures[fut]
             try:
-                append_contact(r, company)
-                if key:
-                    in_master.add(key)
+                rows = fut.result()
             except Exception:
-                logging.exception("Could not save a row for %s", company)
-        with open(result_path, "a", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=OUT_FIELDS, extrasaction="ignore")
-            if write_header:
-                w.writeheader()
-                write_header = False
-            w.writerows(rows)
-        total_contacts += len(rows)
-        total_emails += sum(1 for r in rows if r.get("email") and r.get("email_status") not in ("bounced", "error"))
-        done.add(company.lower())
-        state_path.write_text(json.dumps({"done": sorted(done)}), encoding="utf-8")
-        logging.info("%s: %d contacts, %d with email | totals: %d contacts, %d emails, %.0f min elapsed",
-                     company, len(rows), sum(1 for r in rows if r.get("email")), total_contacts,
-                     total_emails, (time.time() - t0) / 60)
+                logging.exception("Company failed (will be retried on the next run): %s", company)
+                continue
+
+            if crm:
+                crm.mark(rows)
+                if args.exclude_crm:
+                    rows = [r for r in rows if not r.get("in_crm")]
+            for r in rows:
+                key = person_key(r)
+                if key and key not in seen_now:
+                    seen_now[key] = today
+                    if seen_before is not None:
+                        new_rows.append(r)
+            for r in rows:
+                key = person_key(r)
+                if key and key in in_master:
+                    continue                       # already in the master list
+                try:
+                    append_contact(r, company)
+                    if key:
+                        in_master.add(key)
+                except Exception:
+                    logging.exception("Could not save a row for %s", company)
+            with open(result_path, "a", newline="", encoding="utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=OUT_FIELDS, extrasaction="ignore")
+                if write_header:
+                    w.writeheader()
+                    write_header = False
+                w.writerows(rows)
+            total_contacts += len(rows)
+            total_emails += sum(1 for r in rows if r.get("email") and r.get("email_status") not in ("bounced", "error"))
+            done.add(company.lower())
+            state_path.write_text(json.dumps({"done": sorted(done)}), encoding="utf-8")
+            logging.info("%s: %d contacts, %d with email | totals: %d contacts, %d emails, %.0f min elapsed",
+                         company, len(rows), sum(1 for r in rows if r.get("email")), total_contacts,
+                         total_emails, (time.time() - t0) / 60)
 
     seen_path.write_text(json.dumps(seen_now), encoding="utf-8")
     if seen_before is None:

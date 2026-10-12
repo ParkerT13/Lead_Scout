@@ -41,6 +41,7 @@ _TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 _SUBMISSIONS = "https://data.sec.gov/submissions/CIK{cik}.json"
 _ARCHIVE = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc}/{doc}"
 _MAX_FORMS = 40
+_RECENT_DAYS = 548          # ~18 months: older filers have probably left
 
 _ENTITY_WORDS = re.compile(
     r"\b(llc|l\.l\.c|lp|l\.p|inc|corp|corporation|trust|fund|capital|partners|holdings|ltd|"
@@ -130,8 +131,12 @@ def discover(company: str, max_forms: int = _MAX_FORMS, pause: float = 0.15) -> 
         return []
     cik_plain = str(int(cik))
     seen: dict[str, dict] = {}
+    import datetime as _dt
+    cutoff = (_dt.date.today() - _dt.timedelta(days=_RECENT_DAYS)).isoformat()
+    dates = recent.get("filingDate") or []
     forms = [(recent["accessionNumber"][i], recent["primaryDocument"][i])
-             for i, f in enumerate(recent["form"]) if f in ("4", "3")][:max_forms]
+             for i, f in enumerate(recent["form"])
+             if f in ("4", "3") and (not dates or dates[i] >= cutoff)][:max_forms]
     for acc, doc in forms:
         raw_doc = doc.split("/")[-1]                  # drop the xslF345 rendering folder -> raw XML
         x = _get(_ARCHIVE.format(cik=cik_plain, acc=acc.replace("-", ""), doc=raw_doc), session)

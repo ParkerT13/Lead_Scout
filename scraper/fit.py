@@ -49,6 +49,8 @@ _SENIORITY: list[tuple[int, re.Pattern]] = [
 _SENIORITY_LABELS = {1: "C-Suite/Owner", 2: "VP", 3: "Director", 4: "Manager/Lead", 5: "Senior IC",
                      6: "Individual", 9: ""}
 
+_FORMER_RE = re.compile(r"\b(former|formerly|retired|retiree|ex-|past|emeritus|seeking|open to work)\b", re.I)
+
 _TECHNICAL = {"Geoscience", "Reservoir/Completions Eng", "Engineering (other)", "Data/IT"}
 
 
@@ -75,9 +77,12 @@ def classify(title: str) -> dict:
         score = 45                              # "Vice President" with no discipline: worth a look
     if discipline == "Operations" and seniority in (2, 3):
         score += 10
+    former = bool(_FORMER_RE.search(t))
+    if former:
+        score = min(score, 20)                  # no longer there (or not working): keep, but never High
     score = max(0, min(100, score))
     fit = "High" if score >= 75 else "Medium" if score >= 40 else "Low"
-    return {"discipline": discipline, "seniority": seniority,
+    return {"discipline": discipline, "seniority": seniority, "former": former,
             "seniority_label": _SENIORITY_LABELS.get(seniority, ""), "fit_score": score, "fit": fit}
 
 
