@@ -16,13 +16,16 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 import os
-_BOUNCE_FILE = Path(os.environ.get("LEADSCOUT_OUTPUT_DIR") or (Path.home() / "LeadScout_Output")) / "bounces.json"
+
+
+def _bounce_file() -> Path:
+    return Path(os.environ.get("LEADSCOUT_OUTPUT_DIR") or (Path.home() / "LeadScout_Output")) / "bounces.json"
 
 
 def _load() -> dict:
     try:
-        if _BOUNCE_FILE.exists():
-            return json.loads(_BOUNCE_FILE.read_text(encoding="utf-8"))
+        if _bounce_file().exists():
+            return json.loads(_bounce_file().read_text(encoding="utf-8"))
     except Exception as e:
         logger.warning("Could not load bounce data: %s", e)
     return {}
@@ -30,8 +33,8 @@ def _load() -> dict:
 
 def _save(data: dict):
     try:
-        _BOUNCE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _BOUNCE_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        _bounce_file().parent.mkdir(parents=True, exist_ok=True)
+        _bounce_file().write_text(json.dumps(data, indent=2), encoding="utf-8")
     except Exception as e:
         logger.warning("Could not save bounce data: %s", e)
 

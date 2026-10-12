@@ -20,6 +20,7 @@ def write_contacts():
 
 class LearningTests(unittest.TestCase):
     def setUp(self):
+        os.environ["LEADSCOUT_OUTPUT_DIR"] = TMP        # other test modules also set it at import
         for name in ("format_outcomes.json", "domain_cache.json", "bounces.json"):
             p = Path(TMP) / name
             if p.exists():
@@ -79,3 +80,17 @@ class LearningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CacheEditorTests(unittest.TestCase):
+    def test_replace_all_keeps_harvest_for_unchanged_domains(self):
+        os.environ["LEADSCOUT_OUTPUT_DIR"] = TMP
+        domain_cache.put("Acme", "acme.com", "flast", "scraped", "first.last")
+        domain_cache.put_harvest("Acme", [{"email": "a@acme.com", "name": "A B"}])
+        domain_cache.replace_all({"acme": {"domain": "acme.com", "pattern": "first.last", "pattern_source": "manual"}})
+        e = domain_cache.get("Acme")
+        self.assertEqual((e["pattern"], e["pattern_source"]), ("first.last", "manual"))
+        self.assertEqual(e["pattern2"], "first.last")
+        self.assertIsNotNone(domain_cache.get_harvest("Acme"))
+        domain_cache.replace_all({"acme": {"domain": "other.com", "pattern": "flast", "pattern_source": "manual"}})
+        self.assertIsNone(domain_cache.get_harvest("Acme"))             # new domain: old crawl discarded

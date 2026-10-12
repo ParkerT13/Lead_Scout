@@ -2805,9 +2805,9 @@ class MainWindow(QMainWindow):
                     "pattern_source": source if source else "manual",
                 }
 
-        from emailer.domain_cache import _CACHE_FILE
+        from emailer.domain_cache import replace_all
         try:
-            _CACHE_FILE.write_text(json.dumps(new_cache, indent=2), encoding="utf-8")
+            replace_all(new_cache)
             self.statusBar().showMessage(f"Domain cache saved — {len(new_cache)} entries.")
         except Exception as e:
             QMessageBox.warning(self, "Save Error", str(e))
