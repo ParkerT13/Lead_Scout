@@ -106,6 +106,39 @@ All data persists to `~/LeadScout_Output/`:
 
 ## Key Design Decisions
 
+### Contact discovery (all free, no API keys) — `scraper/worker.py::SearchWorker`
+Sources per company: LinkedIn search via free engines (wide query plan: core titles, narrow titles,
+wider roles, cities) -> company team pages (`scraper/sources/teampages.py`; static HTML, then headless
+Chromium via Playwright for JS-built pages; handles cards, tables, prose bios, accordions) -> SEC Form 4
+insider filings (`sources/sec.py`; officers/directors of public companies) -> web mentions
+(`sources/web.py`; "Name, Title at Company" in search results).
+`scraper/people.py::ContactBook` merges the same person across sources (name+company key); contacts
+without a LinkedIn profile carry a unique `linkedin_url` reference to where they were found
+(page#name) so the UI's row matching keeps working. The CRM export blanks non-LinkedIn references.
+Serper / paid search is deliberately NOT used.
+
+### Collect wide, qualify later — `scraper/fit.py`
+Nothing is dropped for its title (only the user's explicit exclude list, e.g. interns). Every contact is
+scored: discipline (Geoscience, Reservoir/Completions Eng, ...), seniority, fit High/Medium/Low. The
+results table has Fit/Discipline columns and an "Any / Medium+ / High only" view filter. Ambiguous
+leftovers (Unknown discipline) are meant for a human or Claude review pass of the CSV.
+
+### Autopilot — `autopilot.py` (`Run Autopilot.bat`, `Schedule Autopilot.bat`)
+Unattended contacts + emails, zero spend: no dialogs, per-company checkpoint/resume, waits out network
+outages, log file, "NEW since last run" report, flags people already in the CRM export
+(`emailer/crm_overlap.py`), never duplicates the master list. `--person-search` (off) additionally
+searches the web for each High-fit person's published address (slow; rarely hits).
+
+### Spend control
+Paid NeverBounce/Reoon verification is opt-in only: Settings checkbox in the app, `--paid-verify` in
+the CLIs. Default is free evidence-based emails.
+
+### Learning from real sends — `emailer/learning.py`
+Import a bounce list (and optionally the full sent list) via the app or `_import_bounces.py --sent`.
+Each address is mapped to the format it used; per-domain failures/successes demote failing formats in
+candidate lists and correct the cached company format (`outcome-guess` / `outcome-verified`, never
+overriding `manual`).
+
 ### One-click flow
 Tab 1 has one big **Find Contacts & Emails** button: pulls contacts -> enriches emails -> saves
 `pipeline_<timestamp>.csv` -> "All done" box with counts and Open Folder. Everything else (pull only,

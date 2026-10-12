@@ -33,8 +33,13 @@ def name_key(name: str) -> str:
     return f"{parts[0]} {parts[-1]}"
 
 
+_LEGAL_WORDS = re.compile(r"\b(inc|incorporated|llc|lp|llp|corp|corporation|company|co|ltd|limited|the)\b")
+
+
 def company_key(company: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", _ascii(company).lower())
+    """'Ring Energy, Inc.' ~ 'ring energy': legal suffixes do not distinguish companies."""
+    text = _LEGAL_WORDS.sub(" ", _ascii(company).lower().replace(".", ""))
+    return re.sub(r"[^a-z0-9]", "", text)
 
 
 def person_key(contact: dict) -> str:

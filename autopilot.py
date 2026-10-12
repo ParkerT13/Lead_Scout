@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-OUT_FIELDS = ["first_name", "last_name", "title", "company", "fit", "discipline", "email", "email_status", "confidence",
+OUT_FIELDS = ["first_name", "last_name", "title", "company", "fit", "discipline", "in_crm", "email", "email_status", "confidence",
               "email_source", "location", "basin", "linkedin_url", "source", "date_pulled"]
 
 
@@ -43,6 +43,22 @@ def read_companies(path: Path) -> list[str]:
             seen.add(name.lower())
             out.append(name)
     return out
+
+
+def master_keys(out_dir: Path) -> set[str]:
+    """person keys already in the master list, so reruns never add duplicates to it."""
+    from scraper.people import person_key
+    keys: set[str] = set()
+    path = out_dir / "all_contacts.csv"
+    if not path.exists():
+        return keys
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            r["name"] = r.get("name") or f"{r.get('first_name', '')} {r.get('last_name', '')}"
+            k = person_key(r)
+            if k:
+                keys.add(k)
+    return keys
 
 
 def master_companies(out_dir: Path) -> list[str]:
@@ -91,6 +107,9 @@ def main(argv=None) -> int:
                          "(slow: ~25s per person; rarely hits for executives; max 5 per company)")
     ap.add_argument("--paid-verify", action="store_true",
                     help="allow NeverBounce/Reoon (spends credits). Off by default.")
+    ap.add_argument("--crm", help="CRM contacts export (CSV) used to flag people you already have; "
+                                  "found automatically in ~/LeadScout_Output/crm_contacts.csv or Downloads")
+    ap.add_argument("--exclude-crm", action="store_true", help="leave people already in your CRM out of the results")
     ap.add_argument("--fresh", action="store_true", help="ignore the saved resume state")
     ap.add_argument("--max-companies", type=int, default=0)
     args = ap.parse_args(argv)
@@ -135,6 +154,21 @@ def main(argv=None) -> int:
                             say=lambda c, m: logging.info("[%s] %s", c, m),
                             detail=lambda m: logging.debug(m))
 
+    from emailer import crm_overlap
+    from scraper.people import person_key
+    crm = crm_overlap.load(args.crm)
+    logging.info("CRM overlap check: %s", f"{len(crm)} known records" if crm else "no CRM export found (skipped)")
+
+    seen_path = out_dir / f"autopilot_seen_{tag}.json"
+    try:
+        seen_before = json.loads(seen_path.read_text(encoding="utf-8")) if seen_path.exists() else None
+    except Exception:
+        seen_before = None
+    seen_now: dict = dict(seen_before or {})
+    new_rows: list[dict] = []
+    today = time.strftime("%Y-%m-%d")
+
+    in_master = master_keys(out_dir)
     write_header = not result_path.exists()
     total_contacts = total_emails = 0
     t0 = time.time()
@@ -155,9 +189,24 @@ def main(argv=None) -> int:
             logging.exception("Company failed (will be retried on the next run): %s", company)
             continue
 
+        if crm:
+            crm.mark(rows)
+            if args.exclude_crm:
+                rows = [r for r in rows if not r.get("in_crm")]
         for r in rows:
+            key = person_key(r)
+            if key and key not in seen_now:
+                seen_now[key] = today
+                if seen_before is not None:
+                    new_rows.append(r)
+        for r in rows:
+            key = person_key(r)
+            if key and key in in_master:
+                continue                       # already in the master list
             try:
                 append_contact(r, company)
+                if key:
+                    in_master.add(key)
             except Exception:
                 logging.exception("Could not save a row for %s", company)
         with open(result_path, "a", newline="", encoding="utf-8") as f:
@@ -174,6 +223,16 @@ def main(argv=None) -> int:
                      company, len(rows), sum(1 for r in rows if r.get("email")), total_contacts,
                      total_emails, (time.time() - t0) / 60)
 
+    seen_path.write_text(json.dumps(seen_now), encoding="utf-8")
+    if seen_before is None:
+        logging.info("First run for '%s': %d people recorded; later runs will report who is NEW.", tag, len(seen_now))
+    else:
+        new_path = out_dir / f"autopilot_{tag}_new_{today}.csv"
+        with open(new_path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=OUT_FIELDS, extrasaction="ignore")
+            w.writeheader()
+            w.writerows(new_rows)
+        logging.info("NEW since the previous run: %d people -> %s", len(new_rows), new_path)
     logging.info("Autopilot finished: %d contacts, %d with an email -> %s", total_contacts, total_emails, result_path)
     return 0
 
