@@ -34,8 +34,9 @@ _GENERIC_WORDS = {
 }
 
 # Only strip true legal entity suffixes — keep industry words like Energy, Resources
+# The suffix must be a separate word: "Hilcorp" must not lose "corp", "Zinc" must not lose "inc".
 _ENTITY_STRIP = re.compile(
-    r",?\s*(Incorporated|Inc\.?|LLC\.?|L\.L\.C\.?|Corp\.?|Corporation"
+    r"(?:\s*,\s*|\s+)(Incorporated|Inc\.?|LLC\.?|L\.L\.C\.?|Corp\.?|Corporation"
     r"|Ltd\.?|Limited|L\.P\.?|LP)\.?\s*$",
     re.IGNORECASE,
 )
@@ -97,7 +98,9 @@ def find_domain(company_name: str) -> str:
             verdict = _site_check(cand, company_name)
             # None = page unreadable (blocked / JS-only). The exact full-name domain is then
             # accepted if it has a mail server; shortened guesses must be positively confirmed.
-            if verdict is True:
+            # A guess our own CRM already holds real contacts for (hilcorp.com) is proven to be a
+            # live mail domain, whatever its homepage looks like.
+            if verdict is True or (cand == guess and _in_crm_kb(cand)):
                 logger.info("Domain validated for %s: %s", company_name, cand)
                 return cand
             if verdict is None and i == 0 and cand == guess and get_mx(cand) and not fallback:
@@ -185,6 +188,12 @@ def registrable(host: str) -> str:
     return ".".join(labels[-2:])
 
 
+def _in_crm_kb(domain: str) -> bool:
+    """True if the HubSpot knowledge base holds real contacts at this domain."""
+    from emailer.pattern_detector import get_kb_entry
+    return bool(get_kb_entry(domain))
+
+
 def _resolve(domain: str) -> str | None:
     """
     Follow redirects from the domain's homepage. Returns the final host (www. stripped), or
@@ -193,12 +202,13 @@ def _resolve(domain: str) -> str | None:
     import requests
     from urllib.parse import urlparse
     for scheme in ("https", "http"):
-        try:
-            resp = requests.head(f"{scheme}://{domain}", timeout=6, allow_redirects=True,
-                                 headers={"User-Agent": "Mozilla/5.0"})
-            return registrable(urlparse(resp.url).hostname or domain)
-        except Exception:
-            continue
+        for method in (requests.head, requests.get):     # some servers reset HEAD requests
+            try:
+                resp = method(f"{scheme}://{domain}", timeout=6, allow_redirects=True,
+                              headers={"User-Agent": "Mozilla/5.0"})
+                return registrable(urlparse(resp.url).hostname or domain)
+            except Exception:
+                continue
     return None
 
 
